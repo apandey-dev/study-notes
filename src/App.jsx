@@ -11,8 +11,7 @@ import {
   Save, 
   Download, 
   Maximize2, 
-  Minimize2,
-  FolderOpen,
+  Minimize2, 
   Plus,
   Minus,
   Grid,
@@ -27,7 +26,7 @@ export default function App() {
   // Application Screen State: 'home' | 'editor'
   const [screen, setScreen] = useState('home');
 
-  // SYNCHRONOUS INITIALIZATION OF THEME (Prevents theme flickering / resetting after Force Reload)
+  // Theme State
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
     if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -37,7 +36,7 @@ export default function App() {
     return 'light';
   });
 
-  // Active File & Document State
+  // Active File & Document State (path is MANDATORY for activeFile)
   const [activeFile, setActiveFile] = useState(null); // { name, path, format }
   const [editorContent, setEditorContent] = useState('');
   const [floatingObjects, setFloatingObjects] = useState([]);
@@ -48,10 +47,10 @@ export default function App() {
 
   // Editor Viewport States
   const [zoom, setZoom] = useState(100);
-  const [wordWrap, setWordWrap] = useState(true);
-  const [pageSize, setPageSize] = useState('A4');
-  const [customWidth, setCustomWidth] = useState(800);
-  const [customHeight, setCustomHeight] = useState(1100);
+  const [wordWrap] = useState(true);
+  const [pageSize] = useState('A4');
+  const [customWidth] = useState(800);
+  const [customHeight] = useState(1100);
 
   // Modals & Panels
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -65,7 +64,7 @@ export default function App() {
     editorInstanceRef.current = inst;
   }, []);
 
-  // PERSIST THEME IMMEDIATELY WHEN TOGGLED
+  // Theme Toggle
   const handleToggleTheme = () => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(nextTheme);
@@ -76,9 +75,8 @@ export default function App() {
     }
   };
 
-  // RESTORE ACTIVE SESSION & CONFIG ON MOUNT / RELOAD
+  // RESTORE SESSION & LOAD WORKSPACE ON MOUNT
   useEffect(() => {
-    // 1. Check Electron AppConfig for saved theme if available
     if (window.electronAPI && window.electronAPI.getAppConfig) {
       window.electronAPI.getAppConfig().then(cfg => {
         if (cfg && cfg.theme) {
@@ -89,56 +87,7 @@ export default function App() {
       });
     }
 
-    // 2. Restore active editor session if reloading during an edit session
-    const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        if (session && session.screen === 'editor' && session.activeFile) {
-          // If file path exists, re-read latest content directly from disk!
-          if (session.activeFile.path && window.electronAPI) {
-            window.electronAPI.readFileContent({ filePath: session.activeFile.path }).then(res => {
-              if (res && res.success) {
-                const parsed = parseFileContent(res.content, session.activeFile.format);
-                setActiveFile(session.activeFile);
-                setEditorContent(parsed.html);
-                setFloatingObjects(parsed.floatingObjects);
-                setNoteType(session.noteType || 'ruled');
-                setZoom(session.zoom || 100);
-                setScreen('editor');
-              } else {
-                // Fallback to session cache if file read fails
-                setActiveFile(session.activeFile);
-                setEditorContent(session.content || '');
-                setFloatingObjects(session.floatingObjects || []);
-                setNoteType(session.noteType || 'ruled');
-                setZoom(session.zoom || 100);
-                setScreen('editor');
-              }
-            });
-          } else {
-            setActiveFile(session.activeFile);
-            setEditorContent(session.content || '');
-            setFloatingObjects(session.floatingObjects || []);
-            setNoteType(session.noteType || 'ruled');
-            setZoom(session.zoom || 100);
-            setScreen('editor');
-          }
-
-          // Restore scroll position after canvas render
-          setTimeout(() => {
-            if (session.scrollTop && paperRef.current) {
-              const viewport = paperRef.current.closest('.editor-main-viewport');
-              if (viewport) viewport.scrollTop = session.scrollTop;
-            }
-          }, 150);
-        }
-      } catch (err) {
-        console.error('Failed to restore session:', err);
-      }
-    }
-
-    // Load workspace notes list
+    // Load workspace notes list from disk
     if (window.electronAPI && window.electronAPI.getWorkspaceFiles) {
       window.electronAPI.getWorkspaceFiles().then((res) => {
         if (res && res.success && res.files) {
@@ -146,11 +95,47 @@ export default function App() {
         }
       });
     }
+
+    // Restore active editor session only if physical file exists on disk
+    const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession);
+        if (session && session.screen === 'editor' && session.activeFile && session.activeFile.path && window.electronAPI) {
+          window.electronAPI.checkFileExists({ filePath: session.activeFile.path }).then(checkRes => {
+            if (checkRes && checkRes.exists) {
+              window.electronAPI.readFileContent({ filePath: session.activeFile.path }).then(res => {
+                if (res && res.success) {
+                  const parsed = parseFileContent(res.content, session.activeFile.format);
+                  setActiveFile(session.activeFile);
+                  setEditorContent(parsed.html);
+                  setFloatingObjects(parsed.floatingObjects || []);
+                  setNoteType(session.noteType || 'ruled');
+                  setZoom(session.zoom || 100);
+                  setScreen('editor');
+
+                  setTimeout(() => {
+                    if (session.scrollTop && paperRef.current) {
+                      const viewport = paperRef.current.closest('.editor-main-viewport');
+                      if (viewport) viewport.scrollTop = session.scrollTop;
+                    }
+                  }, 150);
+                }
+              });
+            } else {
+              localStorage.removeItem(SESSION_STORAGE_KEY);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to restore session:', err);
+      }
+    }
   }, []);
 
   // AUTOMATICALLY PERSIST SESSION WHEN EDITOR STATE CHANGES
   useEffect(() => {
-    if (screen === 'editor' && activeFile) {
+    if (screen === 'editor' && activeFile && activeFile.path) {
       const viewport = paperRef.current ? paperRef.current.closest('.editor-main-viewport') : null;
       const sessionData = {
         screen: 'editor',
@@ -165,116 +150,188 @@ export default function App() {
     }
   }, [screen, activeFile, noteType, editorContent, floatingObjects, zoom]);
 
-  // FLUSH AUTOSAVE & SESSION BEFORE RELOAD / UNLOAD
+  // DIRECT DISK AUTOSAVE (Flushes changes directly to physical file on disk)
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (screen === 'editor' && activeFile) {
-        const viewport = paperRef.current ? paperRef.current.closest('.editor-main-viewport') : null;
-        const sessionData = {
-          screen: 'editor',
-          activeFile,
-          noteType,
-          content: editorContent,
-          floatingObjects,
-          zoom,
-          scrollTop: viewport ? viewport.scrollTop : 0
-        };
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
-        handleSaveFile();
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [screen, activeFile, noteType, editorContent, floatingObjects, zoom]);
+    if (screen === 'editor' && activeFile && activeFile.path && window.electronAPI) {
+      const timer = setTimeout(() => {
+        const serializedData = serializeFileContent(editorContent, activeFile.format, floatingObjects);
+        window.electronAPI.saveFileContent({
+          filePath: activeFile.path,
+          content: serializedData
+        });
+      }, 400);
 
-  // OPEN A NOTE FILE DIRECTLY FROM DISK (Fixes empty editor bug)
+      return () => clearTimeout(timer);
+    }
+  }, [editorContent, floatingObjects, activeFile, screen]);
+
+  // MANDATORY NEW NOTE CREATION FLOW (STEP 1 - 6)
+  const handleCreateNewNote = async (requestedFormat = 'md') => {
+    if (!window.electronAPI) {
+      alert('Electron API required to create note files.');
+      return;
+    }
+
+    try {
+      // STEP 1: Open native Windows Save File Dialog
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const defaultName = `Study_Note_${dateStr}`;
+      const createRes = await window.electronAPI.createFileDialog({
+        defaultName,
+        extension: requestedFormat
+      });
+
+      // User canceled dialog -> Stop immediately. Do NOT open editor.
+      if (!createRes || !createRes.success || !createRes.filePath) {
+        return;
+      }
+
+      const filePath = createRes.filePath;
+      const fileName = createRes.fileName || filePath.split(/[\\/]/).pop();
+      const fileFormat = createRes.fileFormat || requestedFormat;
+
+      // STEP 2: Verify physical file exists on disk
+      const existRes = await window.electronAPI.checkFileExists({ filePath });
+      if (!existRes || !existRes.exists) {
+        alert(`File Creation Error: Physical file could not be created or verified at:\n${filePath}`);
+        return;
+      }
+
+      // STEP 3: Register newly created file in workspace/database
+      const newNoteEntry = {
+        fileName,
+        filePath,
+        fileFormat,
+        folderPath: 'Documents',
+        lastModified: new Date().toISOString(),
+        pageType: 'ruled'
+      };
+
+      setRecentNotes(prevNotes => {
+        const filtered = prevNotes.filter(n => n.filePath !== filePath);
+        return [newNoteEntry, ...filtered];
+      });
+
+      // STEP 4: Re-open & read newly created file directly from disk
+      const readRes = await window.electronAPI.readFileContent({ filePath });
+      if (!readRes || !readRes.success) {
+        alert(`Error reading newly created file from disk:\n${filePath}`);
+        return;
+      }
+
+      const parsed = parseFileContent(readRes.content || '', fileFormat);
+
+      // STEP 5: Initialize editor session with valid physical file record
+      const fileRecord = {
+        name: fileName,
+        path: filePath,
+        format: fileFormat
+      };
+
+      setActiveFile(fileRecord);
+      setEditorContent(parsed.html);
+      setFloatingObjects(parsed.floatingObjects || []);
+      setNoteType('ruled');
+      setZoom(100);
+      setScreen('editor');
+
+      // Persist Session
+      const sessionData = {
+        screen: 'editor',
+        activeFile: fileRecord,
+        noteType: 'ruled',
+        content: parsed.html,
+        floatingObjects: parsed.floatingObjects || [],
+        zoom: 100,
+        scrollTop: 0
+      };
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+
+    } catch (err) {
+      console.error('New note creation error:', err);
+      alert(`An error occurred during note creation:\n${err.message}`);
+    }
+  };
+
+  // MANDATORY OPEN NOTE FLOW (Verify Disk -> Read Disk -> Render)
   const handleOpenNote = async (fileObj) => {
     let targetPath = fileObj ? (fileObj.filePath || fileObj.path) : null;
     let targetName = fileObj ? (fileObj.fileName || fileObj.name) : null;
-    let rawContent = fileObj ? (fileObj.content || '') : '';
 
-    // If no path provided or user clicked "Open Note", show native open file dialog
+    // Step 1: Open file dialog if no target path provided
     if (!targetPath && window.electronAPI) {
       const openRes = await window.electronAPI.openFileDialog();
-      if (openRes && openRes.success && openRes.filePath) {
-        targetPath = openRes.filePath;
-        targetName = openRes.fileName;
-        rawContent = openRes.content;
-      } else {
-        return; // User canceled dialog
+      if (!openRes || !openRes.success || !openRes.filePath) {
+        return; // User canceled
+      }
+      targetPath = openRes.filePath;
+      targetName = openRes.fileName;
+    }
+
+    if (!targetPath) return;
+
+    // Step 2: Verify file exists on disk
+    if (window.electronAPI) {
+      const checkRes = await window.electronAPI.checkFileExists({ filePath: targetPath });
+      if (!checkRes || !checkRes.exists) {
+        alert(`Cannot open note: The physical file no longer exists on disk:\n${targetPath}`);
+        setRecentNotes(prev => prev.filter(n => n.filePath !== targetPath));
+        return;
       }
     }
 
-    // Re-read fresh content directly from disk if path exists
-    if (targetPath && window.electronAPI) {
+    // Step 3: Read file from disk
+    let rawContent = '';
+    if (window.electronAPI) {
       const readRes = await window.electronAPI.readFileContent({ filePath: targetPath });
-      if (readRes && readRes.success) {
-        rawContent = readRes.content;
+      if (!readRes || !readRes.success) {
+        alert(`Failed to read file contents from disk:\n${targetPath}`);
+        return;
       }
+      rawContent = readRes.content;
     }
 
-    const name = targetName || 'Untitled.md';
+    const name = targetName || targetPath.split(/[\\/]/).pop();
     const ext = name.split('.').pop().toLowerCase();
     const format = ext === 'txt' ? 'txt' : 'md';
 
-    // Parse Markdown/Text and extract floating objects
+    // Step 4: Parse metadata and content
     const parsed = parseFileContent(rawContent, format);
 
-    setActiveFile({
+    const fileRecord = {
       name,
-      path: targetPath || null,
+      path: targetPath,
       format
-    });
+    };
 
+    // Step 5 & 6: Initialize editor and register in workspace
+    setActiveFile(fileRecord);
     setEditorContent(parsed.html);
     setFloatingObjects(parsed.floatingObjects || []);
     setScreen('editor');
+
+    const recentEntry = {
+      fileName: name,
+      filePath: targetPath,
+      fileFormat: format,
+      folderPath: 'Documents',
+      lastModified: new Date().toISOString(),
+      pageType: fileObj?.pageType || 'ruled'
+    };
+    setRecentNotes(prev => [recentEntry, ...prev.filter(n => n.filePath !== targetPath)]);
   };
 
-  // Create New Note
-  const handleCreateNewNote = (format = 'md') => {
-    const defaultName = `Untitled Note ${Date.now().toString().slice(-4)}.${format}`;
-    setActiveFile({
-      name: defaultName,
-      path: null,
-      format
-    });
-    setEditorContent('<p></p>');
-    setFloatingObjects([]);
-    setScreen('editor');
-  };
-
-  // Save File Content Directly to Disk
+  // Immediate Manual Save to Disk
   const handleSaveFile = async () => {
-    if (!activeFile) return;
-
+    if (!activeFile || !activeFile.path || !window.electronAPI) return;
     const serializedData = serializeFileContent(editorContent, activeFile.format, floatingObjects);
-
-    if (window.electronAPI && activeFile.path) {
-      await window.electronAPI.saveFileContent({
-        filePath: activeFile.path,
-        content: serializedData
-      });
-    } else if (window.electronAPI) {
-      const createRes = await window.electronAPI.createFileDialog({
-        defaultName: activeFile.name,
-        extension: activeFile.format
-      });
-      if (createRes.success && createRes.filePath) {
-        await window.electronAPI.saveFileContent({
-          filePath: createRes.filePath,
-          content: serializedData
-        });
-        setActiveFile({
-          ...activeFile,
-          name: createRes.filePath.split(/[\\/]/).pop(),
-          path: createRes.filePath
-        });
-      }
-    }
+    await window.electronAPI.saveFileContent({
+      filePath: activeFile.path,
+      content: serializedData
+    });
   };
 
-  // INTENTIONAL CLOSE NOTE -> Clears session state & returns to Home
+  // Intentional Return to Home Screen
   const handleCloseNoteIntentional = () => {
     handleSaveFile();
     localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -303,7 +360,7 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* SINGLE WINDOWS NATIVE TITLEBAR HEADER */}
+      {/* WINDOWS NATIVE TITLEBAR HEADER */}
       <div className="windows-titlebar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {screen === 'editor' ? (

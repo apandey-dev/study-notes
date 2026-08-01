@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "electron:dev": "concurrently \"vite\" \"electron .\"",
-    "dist": "npm run build && electron-builder --win nsis",
+    "dist": "npm run build && electron-builder --win nsis portable dir",
     "pack": "npm run build && electron-builder --win --dir",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -20,6 +20,7 @@
     "productName": "Study Notes",
     "executableName": "Study Notes",
     "copyright": "Copyright © 2026 Study Notes Inc.",
+    "compression": "maximum",
     "asar": true,
     "directories": {
       "output": "dist-installer"
@@ -36,9 +37,24 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "public/favicon.svg"
+    },
+    "portable": {
+      "artifactName": "StudyNotesPortable.exe"
     },
     "nsis": {
       "oneClick": false,
@@ -78,6 +94,7 @@
     "@tiptap/pm": "^3.29.2",
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
+    "@xyflow/react": "^12.11.2",
     "canvas-confetti": "^1.9.4",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

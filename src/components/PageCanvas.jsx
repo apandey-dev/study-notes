@@ -28,13 +28,6 @@ export default function PageCanvas({
   onChangePageSize,
   paperRef
 }) {
-  if (!activePage) return null;
-
-  // Compute paper dimensions based on size selection
-  const sizeConfig = PAGE_SIZES[activePage.size] || PAGE_SIZES.A4;
-  const paperWidth = activePage.size === 'Custom' ? activePage.customWidth : sizeConfig.width;
-  const paperHeight = activePage.size === 'Custom' ? activePage.customHeight : sizeConfig.height;
-
   // Initialize TipTap Rich Text Editor
   const editor = useEditor({
     extensions: [
@@ -52,9 +45,11 @@ export default function PageCanvas({
       TaskItem.configure({ nested: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] })
     ],
-    content: activePage.content || '',
-    onUpdate: ({ editor }) => {
-      onUpdatePageContent(activePage.id, editor.getHTML());
+    content: activePage ? activePage.content || '' : '',
+    onUpdate: ({ editor: currentEditor }) => {
+      if (activePage) {
+        onUpdatePageContent(activePage.id, currentEditor.getHTML());
+      }
     }
   });
 
@@ -66,7 +61,14 @@ export default function PageCanvas({
         editor.commands.setContent(activePage.content || '');
       }
     }
-  }, [activePage.id]);
+  }, [activePage, editor]);
+
+  if (!activePage) return null;
+
+  // Compute paper dimensions based on size selection
+  const sizeConfig = PAGE_SIZES[activePage.size] || PAGE_SIZES.A4;
+  const paperWidth = activePage.size === 'Custom' ? activePage.customWidth : sizeConfig.width;
+  const paperHeight = activePage.size === 'Custom' ? activePage.customHeight : sizeConfig.height;
 
   return (
     <div className="canvas-viewport">

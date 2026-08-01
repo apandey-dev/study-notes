@@ -13,7 +13,7 @@ import {
   Heading1, Heading2, Heading3, Heading4, 
   List, ListOrdered, CheckSquare, 
   Type, Image as ImageIcon, MessageSquare, 
-  Code, Calendar, Clock, Minus, AlertTriangle
+  Code, Calendar, Clock, Minus, AlertTriangle, FileText
 } from 'lucide-react';
 
 const SLASH_SUGGESTIONS = [
@@ -24,7 +24,8 @@ const SLASH_SUGGESTIONS = [
   { label: '/b', desc: 'Bullet List', icon: List, command: 'b' },
   { label: '/n', desc: 'Numbered List', icon: ListOrdered, command: 'n' },
   { label: '/c', desc: 'Interactive Checklist', icon: CheckSquare, command: 'c' },
-  { label: '/sticky', desc: 'Insert Sticky Note', icon: Type, command: 'sticky' },
+  { label: '/tb', desc: 'Insert Floating Text Block (Transparent)', icon: FileText, command: 'textblock' },
+  { label: '/sticky', desc: 'Insert Sticky Note (Paper)', icon: Type, command: 'sticky' },
   { label: '/img', desc: 'Insert Image', icon: ImageIcon, command: 'img' },
   { label: '/note', desc: 'Blue Note Callout', icon: MessageSquare, command: 'note' },
   { label: '/tip', desc: 'Green Tip Callout', icon: MessageSquare, command: 'tip' },
@@ -64,8 +65,9 @@ export default function EditorCanvas({
   onUpdateFloatingObjects,
   fileKey = 'default_note'
 }) {
-  const [pendingPlacement, setPendingPlacement] = useState(null);
+  const [pendingPlacement, setPendingPlacement] = useState(null); // { type: 'image' | 'sticky' | 'textBlock', src? }
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isConnectionModeActive, setIsConnectionModeActive] = useState(false);
 
   // Autocomplete Menu State
   const [slashMenu, setSlashMenu] = useState(null);
@@ -74,7 +76,6 @@ export default function EditorCanvas({
   // Capture initial content & current file key to prevent setContent loop
   const initialContentRef = useRef(content || '');
   const lastLoadedFileKeyRef = useRef(fileKey);
-  const editorInstanceIdRef = useRef(Math.random().toString(36).substr(2, 6));
 
   // TipTap Rich Text Editor Instance - Instantiated EXACTLY ONCE with [] dependencies
   const editor = useEditor({
@@ -117,11 +118,16 @@ export default function EditorCanvas({
     }
   }, [editor, setEditorInstance]);
 
-  // ROOT CAUSE FIX: Only call setContent when switching to a DIFFERENT note file!
+  // STEP 6: Set content and focus cursor to the start of the document when opening/creating note
   useEffect(() => {
     if (editor && fileKey !== lastLoadedFileKeyRef.current) {
       lastLoadedFileKeyRef.current = fileKey;
       editor.commands.setContent(content || '');
+      setTimeout(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.focus('start');
+        }
+      }, 50);
     }
   }, [fileKey, content, editor]);
 
@@ -148,7 +154,7 @@ export default function EditorCanvas({
     };
   }, [pendingPlacement, slashMenu]);
 
-  // Entry Point 1: Insert Image -> Enters Temporary Placement Mode
+  // Placement Handlers
   const handlePrepareInsertImage = (src) => {
     if (fileFormat === 'txt') {
       alert('Images are supported only in Markdown (.md) notes.');
@@ -157,13 +163,20 @@ export default function EditorCanvas({
     setPendingPlacement({ type: 'image', src });
   };
 
-  // Entry Point 2: Insert Floating Text -> Enters Temporary Placement Mode
-  const handlePrepareInsertText = () => {
+  const handlePrepareInsertStickyNote = () => {
     if (fileFormat === 'txt') {
       alert('Sticky Notes are supported only in Markdown (.md) notes.');
       return;
     }
-    setPendingPlacement({ type: 'text' });
+    setPendingPlacement({ type: 'sticky' });
+  };
+
+  const handlePrepareInsertTextBlock = () => {
+    if (fileFormat === 'txt') {
+      alert('Floating Text Blocks are supported only in Markdown (.md) notes.');
+      return;
+    }
+    setPendingPlacement({ type: 'textBlock' });
   };
 
   const handleOpenNativeImagePicker = () => {
@@ -211,7 +224,8 @@ export default function EditorCanvas({
       case 'b': editor.chain().focus().toggleBulletList().run(); break;
       case 'n': editor.chain().focus().toggleOrderedList().run(); break;
       case 'c': editor.chain().focus().toggleTaskList().run(); break;
-      case 'sticky': handlePrepareInsertText(); break;
+      case 'textblock': handlePrepareInsertTextBlock(); break;
+      case 'sticky': handlePrepareInsertStickyNote(); break;
       case 'img': handleOpenNativeImagePicker(); break;
       case 'note': editor.chain().focus().insertContent('<blockquote class="callout-box callout-note"><strong>Note: </strong> </blockquote>').run(); break;
       case 'tip': editor.chain().focus().insertContent('<blockquote class="callout-box callout-tip"><strong>Tip: </strong> </blockquote>').run(); break;
@@ -243,38 +257,57 @@ export default function EditorCanvas({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    const objWidth = pendingPlacement.type === 'image' ? 320 : 240;
-    const objHeight = pendingPlacement.type === 'image' ? 220 : 180;
+    const objWidth = pendingPlacement.type === 'image' ? 320 : (pendingPlacement.type === 'textBlock' ? 280 : 240);
+    const objHeight = pendingPlacement.type === 'image' ? 220 : (pendingPlacement.type === 'textBlock' ? 160 : 180);
 
     const posX = Math.max(0, Math.round(clickX - objWidth / 2));
     const posY = Math.max(0, Math.round(clickY - objHeight / 2));
 
-    const newId = (pendingPlacement.type === 'image' ? 'img_' : 'sticky_') + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+    const prefix = pendingPlacement.type === 'image' ? 'img_' : (pendingPlacement.type === 'textBlock' ? 'tb_' : 'sticky_');
+    const newId = prefix + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
 
-    const newObj = pendingPlacement.type === 'image' ? {
-      id: newId,
-      type: 'image',
-      src: pendingPlacement.src,
-      x: posX,
-      y: posY,
-      width: objWidth,
-      height: objHeight,
-      zIndex: (floatingObjects?.length || 0) + 10
-    } : {
-      id: newId,
-      type: 'text',
-      content: 'Click to edit note...',
-      bgColor: '#FEF3C7',
-      bgDarkColor: '#3A3212',
-      textColor: '#78350F',
-      textDarkColor: '#FDE68A',
-      x: posX,
-      y: posY,
-      width: objWidth,
-      height: objHeight,
-      zIndex: (floatingObjects?.length || 0) + 10,
-      autoEdit: true
-    };
+    let newObj;
+    if (pendingPlacement.type === 'image') {
+      newObj = {
+        id: newId,
+        type: 'image',
+        src: pendingPlacement.src,
+        x: posX,
+        y: posY,
+        width: objWidth,
+        height: objHeight,
+        zIndex: (floatingObjects?.length || 0) + 10
+      };
+    } else if (pendingPlacement.type === 'textBlock') {
+      newObj = {
+        id: newId,
+        type: 'textBlock',
+        content: '<p>Floating text block...</p>',
+        x: posX,
+        y: posY,
+        width: objWidth,
+        height: objHeight,
+        fontSize: 16,
+        zIndex: (floatingObjects?.length || 0) + 10,
+        autoEdit: true
+      };
+    } else {
+      newObj = {
+        id: newId,
+        type: 'text',
+        content: 'Click to edit note...',
+        bgColor: '#FEF9C3',
+        bgDarkColor: '#383214',
+        textColor: '#713F12',
+        textDarkColor: '#FEF08A',
+        x: posX,
+        y: posY,
+        width: objWidth,
+        height: objHeight,
+        zIndex: (floatingObjects?.length || 0) + 10,
+        autoEdit: true
+      };
+    }
 
     onUpdateFloatingObjects && onUpdateFloatingObjects([...floatingObjects, newObj]);
     setPendingPlacement(null);
@@ -366,6 +399,8 @@ export default function EditorCanvas({
             onUpdateObjects={onUpdateFloatingObjects}
             paperRef={paperRef}
             fileFormat={fileFormat}
+            isConnectionModeActive={isConnectionModeActive}
+            onToggleConnectionMode={() => setIsConnectionModeActive(!isConnectionModeActive)}
           />
         </div>
       </div>
@@ -426,7 +461,10 @@ export default function EditorCanvas({
         zoom={zoom}
         onOpenSearch={onOpenSearch}
         onInsertImage={() => handleOpenNativeImagePicker()}
-        onAddFloatingTextBlock={handlePrepareInsertText}
+        onAddStickyNote={handlePrepareInsertStickyNote}
+        onAddFloatingTextBlock={handlePrepareInsertTextBlock}
+        isConnectionModeActive={isConnectionModeActive}
+        onToggleConnectionMode={() => setIsConnectionModeActive(!isConnectionModeActive)}
       />
     </div>
   );
