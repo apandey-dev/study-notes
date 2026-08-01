@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FluentNotes - Premium Windows Notebook</title>
+    <!-- Google Fonts: Fredoka & Playpen Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Playpen+Sans:wght@300..700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var savedTheme = localStorage.getItem('fluent_notes_theme') || 'light';
+          document.documentElement.setAttribute('data-theme', savedTheme);
+          document.documentElement.setAttribute('dir', 'ltr');
+          document.documentElement.style.backgroundColor = savedTheme === 'dark' ? '#1E1E1E' : '#FAFAFA';
+        } catch(e) {}
+      })();
+    </script>
+  </head>
+  <body dir="ltr" style="direction: ltr !important; text-align: left !important;">
+    <div id="root" dir="ltr" style="direction: ltr !important; text-align: left !important;"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
