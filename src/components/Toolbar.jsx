@@ -20,7 +20,12 @@ import {
   StickyNote,
   FileText,
   Share2,
-  Table as TableIcon
+  Table as TableIcon,
+  PenTool,
+  Highlighter,
+  Eraser,
+  LayoutGrid,
+  RotateCcw
 } from 'lucide-react';
 
 // 15 PREMIUM STUDY PALETTE COLORS
@@ -53,7 +58,13 @@ export default function Toolbar({
   onAddFloatingTextBlock,
   onOpenInsertTableModal,
   isConnectionModeActive,
-  onToggleConnectionMode
+  onToggleConnectionMode,
+  drawingTool = 'none',
+  setDrawingTool,
+  inkColor = '#0078D4',
+  setInkColor,
+  onClearCanvasInk,
+  onAutoArrangeMindmap
 }) {
   const [activePopup, setActivePopup] = useState(null); // 'format' | 'lists' | 'colors' | 'insert' | null
   const [colorSubTab, setColorSubTab] = useState('text'); // 'text' | 'heading'
@@ -370,6 +381,103 @@ export default function Toolbar({
           </div>
         )}
       </div>
+
+      <div className="vertical-divider" />
+
+      {/* 6. DRAWING & MINDMAP GROUP (Pen, Highlighter, Eraser, Mindmap) */}
+      {/* Pen Tool Button */}
+      <div style={{ position: 'relative', width: 36, height: 36 }}>
+        <button 
+          className={`btn-vertical-icon ${drawingTool === 'pen' ? 'active' : ''}`}
+          onClick={() => {
+            const next = drawingTool === 'pen' ? 'none' : 'pen';
+            setDrawingTool && setDrawingTool(next);
+            setActivePopup(next !== 'none' ? 'ink-colors' : null);
+          }}
+          title="Pen / Freehand Draw Tool"
+        >
+          <PenTool size={18} color={drawingTool === 'pen' ? 'var(--accent)' : 'var(--text-secondary)'} />
+        </button>
+      </div>
+
+      {/* Highlighter Tool Button */}
+      <div style={{ position: 'relative', width: 36, height: 36 }}>
+        <button 
+          className={`btn-vertical-icon ${drawingTool === 'highlighter' ? 'active' : ''}`}
+          onClick={() => {
+            const next = drawingTool === 'highlighter' ? 'none' : 'highlighter';
+            setDrawingTool && setDrawingTool(next);
+            setActivePopup(next !== 'none' ? 'ink-colors' : null);
+          }}
+          title="Highlighter Tool"
+        >
+          <Highlighter size={18} color="#F59E0B" />
+        </button>
+      </div>
+
+      {/* Eraser Tool Button */}
+      <div style={{ position: 'relative', width: 36, height: 36 }}>
+        <button 
+          className={`btn-vertical-icon ${drawingTool === 'eraser' ? 'active' : ''}`}
+          onClick={() => {
+            const next = drawingTool === 'eraser' ? 'none' : 'eraser';
+            setDrawingTool && setDrawingTool(next);
+            setActivePopup(null);
+          }}
+          title="Eraser Tool"
+        >
+          <Eraser size={18} color={drawingTool === 'eraser' ? '#EF4444' : 'var(--text-secondary)'} />
+        </button>
+      </div>
+
+      {/* Mindmap Tree Button */}
+      <div style={{ position: 'relative', width: 36, height: 36 }}>
+        <button 
+          className="btn-vertical-icon"
+          onClick={() => onAutoArrangeMindmap && onAutoArrangeMindmap()}
+          title="Auto-Arrange Connected Cards into Mindmap Tree"
+        >
+          <LayoutGrid size={18} color="var(--accent)" />
+        </button>
+      </div>
+
+      {/* Ink Colors Swatches Popover */}
+      {activePopup === 'ink-colors' && drawingTool !== 'none' && (
+        <div 
+          className="toolbar-group-popover color-popover" 
+          style={{ width: 140, padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            {drawingTool === 'highlighter' ? 'Highlight Color' : 'Ink Color'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            {['#1F2937', '#0078D4', '#EF4444', '#10B981', '#8B5CF6', 'rgba(253, 224, 71, 0.45)', 'rgba(187, 247, 208, 0.45)', 'rgba(251, 207, 232, 0.45)'].map(c => (
+              <button
+                key={c}
+                onClick={() => setInkColor && setInkColor(c)}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  backgroundColor: c,
+                  border: inkColor === c ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
+                  cursor: 'pointer'
+                }}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="list-popover-item"
+            onClick={() => onClearCanvasInk && onClearCanvasInk()}
+            style={{ fontSize: 11, padding: '4px 6px', color: '#EF4444', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <RotateCcw size={12} color="#EF4444" />
+            <span>Clear Ink</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

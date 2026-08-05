@@ -117,6 +117,9 @@ export default function EditorCanvas({
   const [isConnectionModeActive, setIsConnectionModeActive] = useState(false);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [tableContextMenu, setTableContextMenu] = useState(null); // { x, y }
+  const [drawingTool, setDrawingTool] = useState('none'); // 'none' | 'pen' | 'highlighter' | 'eraser'
+  const [inkColor, setInkColor] = useState('#0078D4');
+  const floatingLayerRef = useRef(null);
 
   // Autocomplete Menu State
   const [slashMenu, setSlashMenu] = useState(null);
@@ -611,6 +614,11 @@ export default function EditorCanvas({
             fileFormat={fileFormat}
             isConnectionModeActive={isConnectionModeActive}
             onToggleConnectionMode={() => setIsConnectionModeActive(!isConnectionModeActive)}
+            drawingTool={drawingTool}
+            setDrawingTool={setDrawingTool}
+            inkColor={inkColor}
+            setInkColor={setInkColor}
+            refApi={floatingLayerRef}
           />
         </div>
       </div>
@@ -635,11 +643,14 @@ export default function EditorCanvas({
                 key={item.label}
                 className={`slash-menu-item ${isSelected ? 'selected' : ''}`}
                 onClick={() => handleExecuteSlashCommand(item)}
+                onMouseEnter={() => setSlashMenu(prev => prev ? { ...prev, selectedIdx: idx } : null)}
               >
-                <IconComp size={15} color="var(--accent)" />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <span className="slash-label">{item.label}</span>
-                  <span className="slash-desc">{item.desc}</span>
+                <div className="slash-menu-icon-box">
+                  <IconComp size={14} color="var(--accent)" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="slash-menu-title">{item.label}</div>
+                  <div className="slash-menu-desc">{item.description}</div>
                 </div>
               </button>
             );
@@ -781,6 +792,12 @@ export default function EditorCanvas({
         onOpenInsertTableModal={() => setIsTableModalOpen(true)}
         isConnectionModeActive={isConnectionModeActive}
         onToggleConnectionMode={() => setIsConnectionModeActive(!isConnectionModeActive)}
+        drawingTool={drawingTool}
+        setDrawingTool={setDrawingTool}
+        inkColor={inkColor}
+        setInkColor={setInkColor}
+        onClearCanvasInk={() => floatingLayerRef.current?.clearCanvas()}
+        onAutoArrangeMindmap={() => floatingLayerRef.current?.autoArrangeMindmap()}
       />
     </div>
   );
