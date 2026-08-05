@@ -76,6 +76,16 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest('.font-popover-dropdown') && !e.target.closest('.btn-compact')) {
+        setIsFontDropdownOpen(false);
+      }
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   const paperRef = useRef(null);
   const editorInstanceRef = useRef(null);
   const saveTimeoutRef = useRef(null);
