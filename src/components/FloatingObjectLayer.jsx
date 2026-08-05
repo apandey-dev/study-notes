@@ -257,6 +257,62 @@ export default function FloatingObjectLayer({
     );
   };
 
+  // FREEHAND CANVAS MOUSE HANDLERS
+  const handleCanvasMouseDown = (e) => {
+    if (drawingTool === 'none') return;
+    setIsDrawing(true);
+    const canvas = drawingCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    if (drawingTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = 20;
+    } else if (drawingTool === 'highlighter') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = inkColor === '#0078D4' ? 'rgba(253, 224, 71, 0.45)' : inkColor;
+      ctx.lineWidth = 18;
+      ctx.lineCap = 'square';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+  };
+
+  const handleCanvasMouseMove = (e) => {
+    if (!isDrawing || drawingTool === 'none') return;
+    const canvas = drawingCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const handleCanvasMouseUp = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+  };
+
+  const handleClearCanvas = () => {
+    const canvas = drawingCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
   const layerRef = useRef(null);
   const fileInputRef = useRef(null);
   const textBlockRefs = useRef({});
@@ -641,6 +697,123 @@ export default function FloatingObjectLayer({
       className={`floating-object-overlay-layer ${isConnectionModeActive ? 'connection-mode-active' : ''}`} 
       ref={layerRef}
     >
+      {/* FREEHAND CANVAS DRAWING LAYER */}
+      <canvas
+        ref={drawingCanvasRef}
+        className="freehand-drawing-canvas"
+        width={1400}
+        height={2000}
+        onMouseDown={handleCanvasMouseDown}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseUp={handleCanvasMouseUp}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: drawingTool !== 'none' ? 'auto' : 'none',
+          cursor: drawingTool === 'eraser' ? 'crosshair' : (drawingTool !== 'none' ? 'crosshair' : 'default'),
+          zIndex: drawingTool !== 'none' ? 9999 : 2
+        }}
+      />
+
+      {/* CANVAS DRAWING TOOLBAR & MINDMAP TOOLS */}
+      <div 
+        className="canvas-floating-tools-bar"
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
+        }}
+      >
+        {/* Pen Tool Button */}
+        <button
+          className={`btn-compact ${drawingTool === 'pen' ? 'btn-compact-primary' : ''}`}
+          onClick={() => setDrawingTool(drawingTool === 'pen' ? 'none' : 'pen')}
+          title="Pen / Freehand Draw Tool"
+          style={{ height: 28, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          <PenTool size={14} />
+          <span style={{ fontSize: 11, fontWeight: 600 }}>Pen</span>
+        </button>
+
+        {/* Highlighter Tool Button */}
+        <button
+          className={`btn-compact ${drawingTool === 'highlighter' ? 'btn-compact-primary' : ''}`}
+          onClick={() => setDrawingTool(drawingTool === 'highlighter' ? 'none' : 'highlighter')}
+          title="Highlighter Tool"
+          style={{ height: 28, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          <Highlighter size={14} color="#F59E0B" />
+          <span style={{ fontSize: 11, fontWeight: 600 }}>Highlighter</span>
+        </button>
+
+        {/* Eraser Tool Button */}
+        <button
+          className={`btn-compact ${drawingTool === 'eraser' ? 'btn-compact-primary' : ''}`}
+          onClick={() => setDrawingTool(drawingTool === 'eraser' ? 'none' : 'eraser')}
+          title="Eraser Tool"
+          style={{ height: 28, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          <Eraser size={14} />
+        </button>
+
+        {/* Ink Colors Swatches (Visible when Pen or Highlighter active) */}
+        {drawingTool !== 'none' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4, paddingLeft: 6, borderLeft: '1px solid var(--border-subtle)' }}>
+            {['#1F2937', '#0078D4', '#EF4444', '#10B981', '#8B5CF6', 'rgba(253, 224, 71, 0.45)'].map(c => (
+              <button
+                key={c}
+                onClick={() => setInkColor(c)}
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  backgroundColor: c,
+                  border: inkColor === c ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
+                  cursor: 'pointer',
+                  transform: inkColor === c ? 'scale(1.15)' : 'scale(1)'
+                }}
+              />
+            ))}
+
+            <button
+              className="btn-titlebar-icon"
+              onClick={handleClearCanvas}
+              title="Clear Canvas Ink"
+              style={{ width: 24, height: 24, borderRadius: 6 }}
+            >
+              <RotateCcw size={12} color="#EF4444" />
+            </button>
+          </div>
+        )}
+
+        <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
+
+        {/* Mindmap Tree Button */}
+        {cards.length > 0 && (
+          <button
+            className="btn-compact"
+            onClick={handleAutoArrangeMindmap}
+            title="Auto-Arrange Cards into Organized Mindmap Tree"
+            style={{ height: 28, fontSize: 11, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <LayoutGrid size={13} color="var(--accent)" />
+            <span style={{ fontWeight: 600 }}>Mindmap</span>
+          </button>
+        )}
+      </div>
+
       <input 
         type="file" 
         ref={fileInputRef} 
