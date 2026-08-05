@@ -6,6 +6,7 @@ import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
 import { Extension } from '@tiptap/core';
 import { CustomSlashCommands } from '../utils/customSlashCommandsExtension';
 import { FontFamily } from '../utils/customFontFamilyExtension';
@@ -76,6 +77,7 @@ const FormatKeymaps = Extension.create({
 const EDITOR_EXTENSIONS = [
   StarterKit,
   Underline,
+  Highlight.configure({ multicolor: true }),
   TaskList,
   TaskItem.configure({ nested: true }),
   TextStyle,

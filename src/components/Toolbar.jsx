@@ -384,50 +384,78 @@ export default function Toolbar({
 
       <div className="vertical-divider" />
 
-      {/* 6. DRAWING & MINDMAP GROUP (Pen, Highlighter, Eraser, Mindmap) */}
-      {/* Pen Tool Button */}
+      {/* 6. SAMSUNG NOTES TEXT HIGHLIGHTER & MINDMAP */}
+      {/* Samsung Notes Level Text Highlighter Button */}
       <div style={{ position: 'relative', width: 36, height: 36 }}>
         <button 
-          className={`btn-vertical-icon ${drawingTool === 'pen' ? 'active' : ''}`}
+          className={`btn-vertical-icon ${editor.isActive('highlight') || activePopup === 'highlighter' ? 'active' : ''}`}
           onClick={() => {
-            const next = drawingTool === 'pen' ? 'none' : 'pen';
-            setDrawingTool && setDrawingTool(next);
-            setActivePopup(next !== 'none' ? 'ink-colors' : null);
+            if (isTxtFormat) {
+              alert('Text highlighting is supported in Markdown (.md) notes.');
+              return;
+            }
+            if (editor.isActive('highlight')) {
+              editor.chain().focus().unsetHighlight().run();
+            } else {
+              editor.chain().focus().toggleHighlight({ color: '#FEF08A' }).run();
+            }
+            setActivePopup(activePopup === 'highlighter' ? null : 'highlighter');
           }}
-          title="Pen / Freehand Draw Tool"
-        >
-          <PenTool size={18} color={drawingTool === 'pen' ? 'var(--accent)' : 'var(--text-secondary)'} />
-        </button>
-      </div>
-
-      {/* Highlighter Tool Button */}
-      <div style={{ position: 'relative', width: 36, height: 36 }}>
-        <button 
-          className={`btn-vertical-icon ${drawingTool === 'highlighter' ? 'active' : ''}`}
-          onClick={() => {
-            const next = drawingTool === 'highlighter' ? 'none' : 'highlighter';
-            setDrawingTool && setDrawingTool(next);
-            setActivePopup(next !== 'none' ? 'ink-colors' : null);
-          }}
-          title="Highlighter Tool"
+          title="Samsung Notes Text Highlighter"
         >
           <Highlighter size={18} color="#F59E0B" />
         </button>
-      </div>
 
-      {/* Eraser Tool Button */}
-      <div style={{ position: 'relative', width: 36, height: 36 }}>
-        <button 
-          className={`btn-vertical-icon ${drawingTool === 'eraser' ? 'active' : ''}`}
-          onClick={() => {
-            const next = drawingTool === 'eraser' ? 'none' : 'eraser';
-            setDrawingTool && setDrawingTool(next);
-            setActivePopup(null);
-          }}
-          title="Eraser Tool"
-        >
-          <Eraser size={18} color={drawingTool === 'eraser' ? '#EF4444' : 'var(--text-secondary)'} />
-        </button>
+        {activePopup === 'highlighter' && (
+          <div 
+            className="toolbar-group-popover color-popover" 
+            style={{ width: 150, padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Text Highlight Color
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+              {[
+                { name: 'Yellow', color: '#FEF08A' },
+                { name: 'Mint', color: '#BBF7D0' },
+                { name: 'Sky Blue', color: '#BAE6FD' },
+                { name: 'Rose', color: '#FBCFE8' },
+                { name: 'Peach', color: '#FED7AA' },
+                { name: 'Lavender', color: '#E9D5FF' }
+              ].map(item => (
+                <button
+                  key={item.color}
+                  title={item.name}
+                  onClick={() => {
+                    editor.chain().focus().toggleHighlight({ color: item.color }).run();
+                    setActivePopup(null);
+                  }}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    backgroundColor: item.color,
+                    border: editor.isActive('highlight', { color: item.color }) ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
+                    cursor: 'pointer'
+                  }}
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="list-popover-item"
+              onClick={() => {
+                editor.chain().focus().unsetHighlight().run();
+                setActivePopup(null);
+              }}
+              style={{ fontSize: 11, padding: '4px 6px', color: '#EF4444', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              <RotateCcw size={12} color="#EF4444" />
+              <span>Clear Highlight</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Mindmap Tree Button */}
@@ -440,44 +468,6 @@ export default function Toolbar({
           <LayoutGrid size={18} color="var(--accent)" />
         </button>
       </div>
-
-      {/* Ink Colors Swatches Popover */}
-      {activePopup === 'ink-colors' && drawingTool !== 'none' && (
-        <div 
-          className="toolbar-group-popover color-popover" 
-          style={{ width: 140, padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}
-        >
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            {drawingTool === 'highlighter' ? 'Highlight Color' : 'Ink Color'}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-            {['#1F2937', '#0078D4', '#EF4444', '#10B981', '#8B5CF6', 'rgba(253, 224, 71, 0.45)', 'rgba(187, 247, 208, 0.45)', 'rgba(251, 207, 232, 0.45)'].map(c => (
-              <button
-                key={c}
-                onClick={() => setInkColor && setInkColor(c)}
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: '50%',
-                  backgroundColor: c,
-                  border: inkColor === c ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
-                  cursor: 'pointer'
-                }}
-              />
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className="list-popover-item"
-            onClick={() => onClearCanvasInk && onClearCanvasInk()}
-            style={{ fontSize: 11, padding: '4px 6px', color: '#EF4444', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}
-          >
-            <RotateCcw size={12} color="#EF4444" />
-            <span>Clear Ink</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

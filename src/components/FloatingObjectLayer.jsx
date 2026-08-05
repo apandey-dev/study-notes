@@ -260,66 +260,9 @@ export default function FloatingObjectLayer({
     );
   };
 
-  // FREEHAND CANVAS MOUSE HANDLERS
-  const handleCanvasMouseDown = (e) => {
-    if (drawingTool === 'none') return;
-    setIsDrawing(true);
-    const canvas = drawingCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-
-    if (drawingTool === 'eraser') {
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = 20;
-    } else if (drawingTool === 'highlighter') {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = inkColor === '#0078D4' ? 'rgba(253, 224, 71, 0.45)' : inkColor;
-      ctx.lineWidth = 18;
-      ctx.lineCap = 'square';
-    } else {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = inkColor;
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-    }
-  };
-
-  const handleCanvasMouseMove = (e) => {
-    if (!isDrawing || drawingTool === 'none') return;
-    const canvas = drawingCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const handleCanvasMouseUp = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-  };
-
-  const handleClearCanvas = () => {
-    const canvas = drawingCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  };
-
   useEffect(() => {
     if (refApi) {
       refApi.current = {
-        clearCanvas: handleClearCanvas,
         autoArrangeMindmap: handleAutoArrangeMindmap
       };
     }
@@ -709,28 +652,6 @@ export default function FloatingObjectLayer({
       className={`floating-object-overlay-layer ${isConnectionModeActive ? 'connection-mode-active' : ''}`} 
       ref={layerRef}
     >
-      {/* FREEHAND CANVAS DRAWING LAYER */}
-      <canvas
-        ref={drawingCanvasRef}
-        className="freehand-drawing-canvas"
-        width={1600}
-        height={2400}
-        onPointerDown={handleCanvasMouseDown}
-        onPointerMove={handleCanvasMouseMove}
-        onPointerUp={handleCanvasMouseUp}
-        onPointerLeave={handleCanvasMouseUp}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: drawingTool !== 'none' ? 'auto' : 'none',
-          cursor: drawingTool === 'eraser' ? 'crosshair' : (drawingTool !== 'none' ? 'crosshair' : 'default'),
-          zIndex: drawingTool !== 'none' ? 99999 : 2
-        }}
-      />
-
       <input 
         type="file" 
         ref={fileInputRef} 
