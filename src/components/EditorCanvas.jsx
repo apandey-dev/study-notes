@@ -116,10 +116,26 @@ export default function EditorCanvas({
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isConnectionModeActive, setIsConnectionModeActive] = useState(false);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [tableContextMenu, setTableContextMenu] = useState(null); // { x, y }
 
   // Autocomplete Menu State
   const [slashMenu, setSlashMenu] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => setTableContextMenu(null);
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  const handlePaperContextMenu = (e) => {
+    const tableEl = e.target.closest('table');
+    if (tableEl) {
+      e.preventDefault();
+      e.stopPropagation();
+      setTableContextMenu({ x: e.clientX, y: e.clientY });
+    }
+  };
 
   const handleInsertTable = ({ rows, cols, withHeaderRow }) => {
     if (!editor) return;
@@ -448,6 +464,7 @@ export default function EditorCanvas({
         <div 
           ref={paperRef}
           className={`study-paper ${noteType === 'ruled' ? 'ruled-page' : 'blank-page'}`}
+          onContextMenu={handlePaperContextMenu}
           style={{
             whiteSpace: 'pre-wrap',
             overflowWrap: 'break-word',
@@ -459,7 +476,7 @@ export default function EditorCanvas({
           }}
         >
           {/* CONTEXTUAL TABLE ACTION TOOLBAR (Visible when cursor is inside a table) */}
-          {editor && editor.isActive('table') && (
+          {(isInsideTable || Boolean(editor && (editor.isActive('table') || editor.isActive('tableCell') || editor.isActive('tableHeader') || editor.isActive('tableRow')))) && (
             <div 
               className="table-floating-toolbar"
               style={{
@@ -644,6 +661,104 @@ export default function EditorCanvas({
           }}
         >
           Click to place • Esc to cancel
+        </div>
+      )}
+
+      {/* RIGHT-CLICK TABLE CONTEXT MENU */}
+      {tableContextMenu && (
+        <div 
+          className="toolbar-group-popover table-context-menu-popover"
+          style={{
+            position: 'fixed',
+            left: Math.min(tableContextMenu.x, window.innerWidth - 185),
+            top: Math.min(tableContextMenu.y, window.innerHeight - 270),
+            zIndex: 999999,
+            width: 180,
+            padding: 6,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 10,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', padding: '4px 8px', marginBottom: 4, borderBottom: '1px solid var(--border-subtle)' }}>
+            Table Options
+          </div>
+
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => { editor.chain().focus().addRowBefore().run(); setTableContextMenu(null); }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+          >
+            <ArrowUp size={13} color="var(--text-secondary)" />
+            <span>Add Row Above</span>
+          </button>
+
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => { editor.chain().focus().addRowAfter().run(); setTableContextMenu(null); }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+          >
+            <ArrowDown size={13} color="var(--text-secondary)" />
+            <span>Add Row Below</span>
+          </button>
+
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => { editor.chain().focus().addColumnBefore().run(); setTableContextMenu(null); }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+          >
+            <ArrowLeft size={13} color="var(--text-secondary)" />
+            <span>Add Col Left</span>
+          </button>
+
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => { editor.chain().focus().addColumnAfter().run(); setTableContextMenu(null); }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+          >
+            <ArrowRight size={13} color="var(--text-secondary)" />
+            <span>Add Col Right</span>
+          </button>
+
+          <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 0' }} />
+
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => { editor.chain().focus().deleteRow().run(); setTableContextMenu(null); }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444', width: '100%' }}
+          >
+            <Trash2 size={13} color="#EF4444" />
+            <span>Delete Row</span>
+          </button>
+
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => { editor.chain().focus().deleteColumn().run(); setTableContextMenu(null); }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444', width: '100%' }}
+          >
+            <Trash2 size={13} color="#EF4444" />
+            <span>Delete Col</span>
+          </button>
+
+          <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 0' }} />
+
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => { editor.chain().focus().deleteTable().run(); setTableContextMenu(null); }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444', fontWeight: 600, background: 'rgba(239, 68, 68, 0.08)', width: '100%' }}
+          >
+            <Trash2 size={13} color="#EF4444" />
+            <span>Remove Table</span>
+          </button>
         </div>
       )}
 
