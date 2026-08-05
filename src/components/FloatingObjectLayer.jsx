@@ -241,16 +241,21 @@ export default function FloatingObjectLayer({
     });
 
     const newPositions = {};
+    const centerY = 260;
+
     Object.keys(levels).forEach(lvlStr => {
       const lvl = parseInt(lvlStr);
       const nodeIds = levels[lvl];
-      const startY = 80;
-      const startX = 60 + lvl * 290;
+      const count = nodeIds.length;
+      const verticalGap = 190;
+      const totalHeight = (count - 1) * verticalGap;
+      const startY = centerY - (totalHeight / 2);
+      const startX = 80 + lvl * 320;
 
       nodeIds.forEach((nodeId, idx) => {
         newPositions[nodeId] = {
           x: startX,
-          y: startY + idx * 190
+          y: Math.max(60, startY + idx * verticalGap)
         };
       });
     });
@@ -1008,7 +1013,7 @@ export default function FloatingObjectLayer({
                           <button
                             key={c.name}
                             className="sticky-swatch-btn"
-                            style={{ background: isDarkMode ? c.darkValue : c.value }}
+                            style={{ background: c.value, border: '1px solid rgba(0,0,0,0.2)' }}
                             title={c.name}
                             onClick={() => handleChangeStickyColor(obj.id, c)}
                           />
