@@ -107,6 +107,8 @@ function createWindow() {
 
   // Handle production load failure gracefully with a diagnostic window instead of silent white screen
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    // Ignore ERR_ABORTED (-3) as it happens during normal reloads/redirects
+    if (errorCode === -3) return;
     console.error('[ELECTRON RENDERER DID-FAIL-LOAD]', { errorCode, errorDescription, validatedURL });
     if (!isDev) {
       const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
