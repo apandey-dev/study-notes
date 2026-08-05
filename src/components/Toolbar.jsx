@@ -267,18 +267,24 @@ export default function Toolbar({
 
         {activePopup === 'colors' && !isTxtFormat && (
           <div className="toolbar-group-popover color-popover">
-            <div className="popover-tabs">
+            <div className="popover-tabs" style={{ display: 'flex', gap: 4, paddingBottom: 6, marginBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
               <button 
                 className={`tab-btn ${colorSubTab === 'text' ? 'active' : ''}`}
                 onClick={() => setColorSubTab('text')}
+                title="Text Color"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}
               >
-                Text Color
+                <Type size={14} />
+                <span>Text Color</span>
               </button>
               <button 
                 className={`tab-btn ${colorSubTab === 'heading' ? 'active' : ''}`}
                 onClick={() => setColorSubTab('heading')}
+                title="Heading Color"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}
               >
-                Heading Color
+                <Heading1 size={14} />
+                <span>Heading Color</span>
               </button>
             </div>
 
@@ -290,7 +296,7 @@ export default function Toolbar({
                     e.preventDefault();
                     handleApplyColor(c.value);
                   }}
-                  title={c.name}
+                  title={colorSubTab === 'text' ? `Text Color: ${c.name}` : `Heading Color: ${c.name}`}
                   className="color-swatch-btn"
                   style={{
                     background: c.value === 'inherit' ? 'var(--text-primary)' : c.value

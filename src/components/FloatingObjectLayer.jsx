@@ -609,11 +609,23 @@ export default function FloatingObjectLayer({
           const srcCoords = getHandleCoords(fromObj, smartPair.fromHandle);
           const tgtCoords = getHandleCoords(toObj, smartPair.toHandle);
 
+          // Check if any third card intersects the path area between src and tgt
+          const doesIntersectOtherNode = cards.some(c => {
+            if (c.id === fObj.id || c.id === tObj.id) return false;
+            const minX = Math.min(srcCoords.x, tgtCoords.x);
+            const maxX = Math.max(srcCoords.x, tgtCoords.x);
+            const minY = Math.min(srcCoords.y, tgtCoords.y);
+            const maxY = Math.max(srcCoords.y, tgtCoords.y);
+            const cX = c.x + (c.width || 200) / 2;
+            const cY = c.y + (c.height || 150) / 2;
+            return (cX >= minX - 30 && cX <= maxX + 30 && cY >= minY - 30 && cY <= maxY + 30);
+          });
+
           let pathD = '';
           let labelX = (srcCoords.x + tgtCoords.x) / 2;
           let labelY = (srcCoords.y + tgtCoords.y) / 2;
 
-          const lineType = conn.lineType || 'bezier';
+          const lineType = conn.lineType || (doesIntersectOtherNode ? 'orthogonal' : 'bezier');
 
           if (lineType === 'straight') {
             [pathD, labelX, labelY] = getStraightPath({
@@ -630,7 +642,7 @@ export default function FloatingObjectLayer({
               targetY: tgtCoords.y,
               sourcePosition: srcCoords.position,
               targetPosition: tgtCoords.position,
-              borderRadius: 8
+              borderRadius: 14
             });
           } else {
             // Default Smooth Bezier curve
@@ -1089,100 +1101,32 @@ export default function FloatingObjectLayer({
             e.stopPropagation();
           }}
         >
-          {/* Style Popover (Palette) */}
+          {/* Pointer / Line Color Popover (Palette) */}
           <div style={{ position: 'relative' }}>
             <button 
               className={`conn-btn icon-only ${activeConnPopover === 'style' ? 'active' : ''}`}
               onClick={() => setActiveConnPopover(activeConnPopover === 'style' ? null : 'style')}
-              data-tooltip="Connection Style"
+              data-tooltip="Pointer Color"
             >
-              <Palette size={15} />
+              <Palette size={15} color={selectedConnectionObj.color || 'var(--accent)'} />
             </button>
 
             {activeConnPopover === 'style' && (
-              <div className="conn-popover-menu">
-                <div className="conn-popover-section">
-                  <span className="conn-popover-label">Color</span>
-                  <div className="conn-swatch-grid">
-                    {CONNECTION_COLORS.map(c => (
-                      <button
-                        key={c.value}
-                        className={`conn-swatch ${selectedConnectionObj.color === c.value ? 'active' : ''}`}
-                        style={{ background: c.value }}
-                        data-tooltip={c.name}
-                        onClick={() => handleUpdateConnectionProp(selectedConnectionObj.id, 'color', c.value)}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="conn-popover-divider" />
-
-                <div className="conn-popover-section">
-                  <span className="conn-popover-label">Line Curve</span>
-                  <div className="conn-btn-group">
+              <div className="conn-popover-menu" style={{ padding: '8px 10px' }}>
+                <span className="conn-popover-label" style={{ marginBottom: 6, display: 'block', fontSize: 11 }}>Pointer Color</span>
+                <div className="conn-swatch-grid">
+                  {CONNECTION_COLORS.map(c => (
                     <button
-                      className={`conn-sub-btn ${selectedConnectionObj.lineType === 'bezier' || !selectedConnectionObj.lineType ? 'active' : ''}`}
-                      onClick={() => handleUpdateConnectionProp(selectedConnectionObj.id, 'lineType', 'bezier')}
-                      data-tooltip="Smooth Bezier"
-                    >
-                      <Spline size={14} />
-                    </button>
-                    <button
-                      className={`conn-sub-btn ${selectedConnectionObj.lineType === 'straight' ? 'active' : ''}`}
-                      onClick={() => handleUpdateConnectionProp(selectedConnectionObj.id, 'lineType', 'straight')}
-                      data-tooltip="Straight Line"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <button
-                      className={`conn-sub-btn ${selectedConnectionObj.lineType === 'orthogonal' ? 'active' : ''}`}
-                      onClick={() => handleUpdateConnectionProp(selectedConnectionObj.id, 'lineType', 'orthogonal')}
-                      data-tooltip="Orthogonal"
-                    >
-                      <Square size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="conn-popover-divider" />
-
-                <div className="conn-popover-section">
-                  <span className="conn-popover-label">Thickness</span>
-                  <div className="conn-btn-group">
-                    {[1, 2, 3].map(t => (
-                      <button
-                        key={t}
-                        className={`conn-sub-btn ${selectedConnectionObj.thickness === t || (!selectedConnectionObj.thickness && t === 2) ? 'active' : ''}`}
-                        onClick={() => handleUpdateConnectionProp(selectedConnectionObj.id, 'thickness', t)}
-                        data-tooltip={`${t}px`}
-                      >
-                        {t}px
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="conn-popover-divider" />
-
-                <div className="conn-popover-section">
-                  <span className="conn-popover-label">Pattern</span>
-                  <div className="conn-btn-group">
-                    <button
-                      className={`conn-sub-btn ${selectedConnectionObj.lineStyle === 'solid' || !selectedConnectionObj.lineStyle ? 'active' : ''}`}
-                      onClick={() => handleUpdateConnectionProp(selectedConnectionObj.id, 'lineStyle', 'solid')}
-                      data-tooltip="Solid Line"
-                    >
-                      —
-                    </button>
-                    <button
-                      className={`conn-sub-btn ${selectedConnectionObj.lineStyle === 'dashed' ? 'active' : ''}`}
-                      onClick={() => handleUpdateConnectionProp(selectedConnectionObj.id, 'lineStyle', 'dashed')}
-                      data-tooltip="Dashed Line"
-                    >
-                      - -
-                    </button>
-                  </div>
+                      key={c.value}
+                      className={`conn-swatch ${selectedConnectionObj.color === c.value ? 'active' : ''}`}
+                      style={{ background: c.value }}
+                      data-tooltip={c.name}
+                      onClick={() => {
+                        handleUpdateConnectionProp(selectedConnectionObj.id, 'color', c.value);
+                        setActiveConnPopover(null);
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
             )}
