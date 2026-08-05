@@ -198,7 +198,7 @@ export default function FloatingObjectLayer({
   const [isDrawing, setIsDrawing] = useState(false);
   const drawingCanvasRef = useRef(null);
 
-  // AUTO-ARRANGE MINDMAP TREE LAYOUT ALGORITHM
+  // PERFECT AUTO-ARRANGE MINDMAP TREE & CONNECTIONS
   const handleAutoArrangeMindmap = () => {
     if (cards.length === 0) return;
 
@@ -218,11 +218,17 @@ export default function FloatingObjectLayer({
       }
     });
 
-    let rootIds = cards.filter(c => inDegree[c.id] === 0).map(c => c.id);
-    if (rootIds.length === 0) rootIds = [cards[0].id];
+    let connectedRoots = cards.filter(c => inDegree[c.id] === 0 && childrenMap[c.id].length > 0).map(c => c.id);
+    
+    if (connectedRoots.length === 0) {
+      connectedRoots = cards.filter(c => inDegree[c.id] === 0).map(c => c.id);
+    }
+    if (connectedRoots.length === 0 && cards.length > 0) {
+      connectedRoots = [cards[0].id];
+    }
 
     const levels = {};
-    const queue = rootIds.map(id => ({ id, level: 0 }));
+    const queue = connectedRoots.map(id => ({ id, level: 0 }));
     const visited = new Set();
 
     while (queue.length > 0) {
@@ -241,36 +247,70 @@ export default function FloatingObjectLayer({
       });
     }
 
-    cards.forEach(c => {
-      if (!visited.has(c.id)) {
-        if (!levels[0]) levels[0] = [];
-        levels[0].push(c.id);
-      }
-    });
+    const unvisitedCards = cards.filter(c => !visited.has(c.id));
 
     const newPositions = {};
-    const centerY = 260;
+    const centerY = 240;
+    const verticalGap = 200;
+    const horizontalGap = 330;
 
     Object.keys(levels).forEach(lvlStr => {
       const lvl = parseInt(lvlStr);
       const nodeIds = levels[lvl];
       const count = nodeIds.length;
-      const verticalGap = 190;
       const totalHeight = (count - 1) * verticalGap;
       const startY = centerY - (totalHeight / 2);
-      const startX = 80 + lvl * 320;
+      const startX = 60 + lvl * horizontalGap;
 
       nodeIds.forEach((nodeId, idx) => {
         newPositions[nodeId] = {
           x: startX,
-          y: Math.max(60, startY + idx * verticalGap)
+          y: Math.max(60, Math.round(startY + idx * verticalGap))
         };
       });
     });
 
-    onUpdateObjects(
-      objects.map(o => newPositions[o.id] ? { ...o, x: newPositions[o.id].x, y: newPositions[o.id].y } : o)
-    );
+    if (unvisitedCards.length > 0) {
+      const maxLvl = Object.keys(levels).length > 0 ? Math.max(...Object.keys(levels).map(Number)) : 0;
+      const standaloneX = 60 + (maxLvl + 1) * horizontalGap;
+      unvisitedCards.forEach((c, idx) => {
+        newPositions[c.id] = {
+          x: standaloneX,
+          y: 60 + idx * verticalGap
+        };
+      });
+    }
+
+    const updatedObjects = objects.map(o => {
+      if (o.type === 'connection') {
+        const fromPos = newPositions[o.fromId];
+        const toPos = newPositions[o.toId];
+        if (fromPos && toPos) {
+          if (fromPos.x < toPos.x) {
+            return { ...o, fromHandle: 'right', toHandle: 'left' };
+          } else if (fromPos.x > toPos.x) {
+            return { ...o, fromHandle: 'left', toHandle: 'right' };
+          } else if (fromPos.y < toPos.y) {
+            return { ...o, fromHandle: 'bottom', toHandle: 'top' };
+          } else {
+            return { ...o, fromHandle: 'top', toHandle: 'bottom' };
+          }
+        }
+        return o;
+      }
+
+      if (newPositions[o.id]) {
+        return {
+          ...o,
+          x: newPositions[o.id].x,
+          y: newPositions[o.id].y
+        };
+      }
+
+      return o;
+    });
+
+    onUpdateObjects(updatedObjects);
   };
 
   useEffect(() => {
