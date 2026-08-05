@@ -3,6 +3,7 @@ import HomeScreen from './components/HomeScreen';
 import EditorCanvas from './components/EditorCanvas';
 import SearchOverlay from './components/SearchOverlay';
 import ExportModal from './components/ExportModal';
+import TabBar from './components/TabBar';
 import { parseFileContent, serializeFileContent } from './utils/markdownConverter';
 import { 
   Sun, 
@@ -41,6 +42,7 @@ export default function App() {
 
   // Active File & Document State (path is MANDATORY for activeFile)
   const [activeFile, setActiveFile] = useState(null); // { name, path, format }
+  const [openTabs, setOpenTabs] = useState([]);
   const [editorContent, setEditorContent] = useState('');
   const [floatingObjects, setFloatingObjects] = useState([]);
   const [noteType, setNoteType] = useState('ruled'); // 'ruled' | 'blank'
@@ -259,6 +261,7 @@ export default function App() {
       };
 
       setActiveFile(fileRecord);
+      setOpenTabs(prev => prev.some(t => t.path === fileRecord.path) ? prev : [...prev, fileRecord]);
       setEditorContent(parsed.html);
       setFloatingObjects(parsed.floatingObjects || []);
       setNoteType('ruled');
@@ -336,6 +339,7 @@ export default function App() {
 
     // Step 5 & 6: Initialize editor and register in workspace
     setActiveFile(fileRecord);
+    setOpenTabs(prev => prev.some(t => t.path === fileRecord.path) ? prev : [...prev, fileRecord]);
     setEditorContent(parsed.html);
     setFloatingObjects(parsed.floatingObjects || []);
     setScreen('editor');
@@ -394,6 +398,21 @@ export default function App() {
     if (window.electronAPI) window.electronAPI.closeWindow();
   };
 
+  const handleCloseTab = (tabToClose) => {
+    const updatedTabs = openTabs.filter(t => t.path !== tabToClose.path);
+    setOpenTabs(updatedTabs);
+
+    if (activeFile && activeFile.path === tabToClose.path) {
+      if (updatedTabs.length > 0) {
+        const nextTab = updatedTabs[updatedTabs.length - 1];
+        handleOpenNote({ path: nextTab.path, name: nextTab.name });
+      } else {
+        setScreen('home');
+        setActiveFile(null);
+      }
+    }
+  };
+
   return (
     <div className="app-container">
       {/* WINDOWS NATIVE TITLEBAR HEADER */}
@@ -413,8 +432,8 @@ export default function App() {
 
           <span style={{ fontWeight: 600 }}>
             {screen === 'editor' && activeFile 
-              ? activeFile.name 
-              : 'FluentNotes - Minimalist Study Notebook'}
+              ? `${activeFile.name} — Study Notes` 
+              : 'Study Notes'}
           </span>
         </div>
 
@@ -555,7 +574,7 @@ export default function App() {
           <button 
             className="btn-titlebar-icon no-drag" 
             onClick={handleToggleTheme}
-            title="Toggle Light / Dark Theme"
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
           >
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
@@ -574,6 +593,17 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* MULTI-TAB NOTE WORKSPACE BAR */}
+      {screen === 'editor' && openTabs.length > 0 && (
+        <TabBar 
+          openTabs={openTabs}
+          activeTabPath={activeFile?.path}
+          onSelectTab={(tab) => handleOpenNote({ path: tab.path, name: tab.name })}
+          onCloseTab={handleCloseTab}
+          onNewTab={() => handleCreateNewNote('md')}
+        />
+      )}
 
       {/* SCREEN ROUTER */}
       {screen === 'home' ? (

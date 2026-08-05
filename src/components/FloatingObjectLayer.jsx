@@ -19,7 +19,13 @@ import {
   Tag,
   Spline,
   Minus,
-  Square
+  Square,
+  PenTool,
+  Highlighter,
+  Eraser,
+  LayoutGrid,
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 
 // SOFT PAPER-LIKE STICKY NOTE PALETTE (10 low-saturation study colors)
@@ -174,6 +180,82 @@ export default function FloatingObjectLayer({
   const [hoveredObjectId, setHoveredObjectId] = useState(null);
 
   const [contextMenu, setContextMenu] = useState(null); // { x, y, id }
+
+  // FREEHAND INK / DRAWING STATES
+  const [drawingTool, setDrawingTool] = useState('none'); // 'none' | 'pen' | 'highlighter' | 'eraser'
+  const [inkColor, setInkColor] = useState('#0078D4');
+  const [isDrawing, setIsDrawing] = useState(false);
+  const drawingCanvasRef = useRef(null);
+
+  // AUTO-ARRANGE MINDMAP TREE LAYOUT ALGORITHM
+  const handleAutoArrangeMindmap = () => {
+    if (cards.length === 0) return;
+
+    const inDegree = {};
+    const childrenMap = {};
+    cards.forEach(c => {
+      inDegree[c.id] = 0;
+      childrenMap[c.id] = [];
+    });
+
+    connections.forEach(conn => {
+      if (inDegree[conn.toId] !== undefined) {
+        inDegree[conn.toId]++;
+      }
+      if (childrenMap[conn.fromId]) {
+        childrenMap[conn.fromId].push(conn.toId);
+      }
+    });
+
+    let rootIds = cards.filter(c => inDegree[c.id] === 0).map(c => c.id);
+    if (rootIds.length === 0) rootIds = [cards[0].id];
+
+    const levels = {};
+    const queue = rootIds.map(id => ({ id, level: 0 }));
+    const visited = new Set();
+
+    while (queue.length > 0) {
+      const { id, level } = queue.shift();
+      if (visited.has(id)) continue;
+      visited.add(id);
+
+      if (!levels[level]) levels[level] = [];
+      levels[level].push(id);
+
+      const children = childrenMap[id] || [];
+      children.forEach(childId => {
+        if (!visited.has(childId)) {
+          queue.push({ id: childId, level: level + 1 });
+        }
+      });
+    }
+
+    cards.forEach(c => {
+      if (!visited.has(c.id)) {
+        if (!levels[0]) levels[0] = [];
+        levels[0].push(c.id);
+      }
+    });
+
+    const newPositions = {};
+    Object.keys(levels).forEach(lvlStr => {
+      const lvl = parseInt(lvlStr);
+      const nodeIds = levels[lvl];
+      const startY = 80;
+      const startX = 60 + lvl * 290;
+
+      nodeIds.forEach((nodeId, idx) => {
+        newPositions[nodeId] = {
+          x: startX,
+          y: startY + idx * 190
+        };
+      });
+    });
+
+    onUpdateObjects(
+      objects.map(o => newPositions[o.id] ? { ...o, x: newPositions[o.id].x, y: newPositions[o.id].y } : o)
+    );
+  };
 
   const layerRef = useRef(null);
   const fileInputRef = useRef(null);
