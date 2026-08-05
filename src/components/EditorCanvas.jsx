@@ -21,7 +21,7 @@ import {
   List, ListOrdered, CheckSquare, 
   Type, Image as ImageIcon, MessageSquare, 
   Code, Calendar, Clock, Minus, AlertTriangle, FileText,
-  Table as TableIcon
+  Table as TableIcon, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight
 } from 'lucide-react';
 
 const SLASH_SUGGESTIONS = [
@@ -444,6 +444,131 @@ export default function EditorCanvas({
             textAlign: 'left'
           }}
         >
+          {/* CONTEXTUAL TABLE ACTION TOOLBAR (Visible when cursor is inside a table) */}
+          {editor && editor.isActive('table') && (
+            <div 
+              className="table-floating-toolbar"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '6px 12px',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 10,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                marginBottom: 14,
+                width: 'fit-content',
+                zIndex: 999
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 6 }}>
+                <TableIcon size={14} color="var(--accent)" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase' }}>Table:</span>
+              </div>
+
+              {/* Add Row Controls */}
+              <button
+                type="button"
+                className="btn-compact"
+                onClick={() => editor.chain().focus().addRowBefore().run()}
+                title="Add Row Above"
+                style={{ height: 26, fontSize: 11, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <ArrowUp size={12} color="var(--text-secondary)" />
+                <span>+ Row Above</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-compact"
+                onClick={() => editor.chain().focus().addRowAfter().run()}
+                title="Add Row Below"
+                style={{ height: 26, fontSize: 11, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <ArrowDown size={12} color="var(--text-secondary)" />
+                <span>+ Row Below</span>
+              </button>
+
+              <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
+
+              {/* Add Column Controls */}
+              <button
+                type="button"
+                className="btn-compact"
+                onClick={() => editor.chain().focus().addColumnBefore().run()}
+                title="Add Column Left"
+                style={{ height: 26, fontSize: 11, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <ArrowLeft size={12} color="var(--text-secondary)" />
+                <span>+ Col Left</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-compact"
+                onClick={() => editor.chain().focus().addColumnAfter().run()}
+                title="Add Column Right"
+                style={{ height: 26, fontSize: 11, padding: '0 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <ArrowRight size={12} color="var(--text-secondary)" />
+                <span>+ Col Right</span>
+              </button>
+
+              <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
+
+              {/* Single Row Delete */}
+              <button
+                type="button"
+                className="btn-compact"
+                onClick={() => editor.chain().focus().deleteRow().run()}
+                title="Delete Current Row"
+                style={{ height: 26, fontSize: 11, padding: '0 8px', borderRadius: 6, color: '#EF4444', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <Trash2 size={12} color="#EF4444" />
+                <span>Delete Row</span>
+              </button>
+
+              {/* Single Column Delete */}
+              <button
+                type="button"
+                className="btn-compact"
+                onClick={() => editor.chain().focus().deleteColumn().run()}
+                title="Delete Current Column"
+                style={{ height: 26, fontSize: 11, padding: '0 8px', borderRadius: 6, color: '#EF4444', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <Trash2 size={12} color="#EF4444" />
+                <span>Delete Col</span>
+              </button>
+
+              <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
+
+              {/* Entire Table Delete */}
+              <button
+                type="button"
+                className="btn-compact"
+                onClick={() => editor.chain().focus().deleteTable().run()}
+                title="Remove Entire Table"
+                style={{ 
+                  height: 26, 
+                  fontSize: 11, 
+                  padding: '0 10px', 
+                  borderRadius: 6, 
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                  color: '#EF4444', 
+                  border: '1px solid rgba(239, 68, 68, 0.3)', 
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <Trash2 size={12} color="#EF4444" />
+                <span>Remove Table</span>
+              </button>
+            </div>
+          )}
+
           {/* Normal Document Text Flow */}
           <EditorContent editor={editor} dir="ltr" style={{ direction: 'ltr', textAlign: 'left', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }} />
 
