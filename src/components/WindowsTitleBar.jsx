@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import appLogo from '../assets/app-logo.svg';
 import { 
   BookOpen, 
   Search, 
@@ -49,7 +50,7 @@ export default function WindowsTitleBar({
     <div className="windows-titlebar" onDoubleClick={handleDoubleClick}>
       {/* LEFT: App Logo & Title (Drag Region) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <BookOpen size={16} color="#0078D4" />
+        <img src={appLogo} alt="Study Notes" style={{ width: 18, height: 18, borderRadius: 4 }} />
         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>Study Notes</span>
       </div>
 

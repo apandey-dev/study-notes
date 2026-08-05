@@ -373,25 +373,6 @@ export default function Toolbar({
       >
         <Share2 size={18} color={isConnectionModeActive ? 'var(--accent)' : 'currentColor'} />
       </button>
-
-      <div className="vertical-divider" />
-
-      {/* 6. ZOOM CONTROLS */}
-      <button 
-        className="btn-vertical-icon" 
-        onClick={() => setZoom && setZoom(Math.min(160, zoom + 10))}
-        title="Zoom In"
-      >
-        <ZoomIn size={18} />
-      </button>
-
-      <button 
-        className="btn-vertical-icon" 
-        onClick={() => setZoom && setZoom(Math.max(70, zoom - 10))}
-        title="Zoom Out"
-      >
-        <ZoomOut size={18} />
-      </button>
     </div>
   );
 }

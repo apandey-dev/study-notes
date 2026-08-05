@@ -1,4 +1,5 @@
 import React from 'react';
+import appLogo from '../assets/app-logo.svg';
 import { 
   BookOpen, 
   ArrowLeft, 
@@ -41,7 +42,7 @@ export default function Header({
         <div style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BookOpen size={16} color="#0078D4" />
+          <img src={appLogo} alt="Study Notes" style={{ width: 20, height: 20, borderRadius: 5 }} />
           <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
             Study Notes — {fileName || 'Untitled.md'}
           </span>

@@ -16,7 +16,8 @@ import {
   Minus,
   Grid,
   FileText,
-  X
+  X,
+  Check
 } from 'lucide-react';
 
 const SESSION_STORAGE_KEY = 'fluent_notes_active_session';
@@ -56,9 +57,11 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [saveState, setSaveState] = useState('idle'); // 'idle' | 'saving' | 'saved'
 
   const paperRef = useRef(null);
   const editorInstanceRef = useRef(null);
+  const saveTimeoutRef = useRef(null);
 
   const handleSetEditorInstance = useCallback((inst) => {
     editorInstanceRef.current = inst;
@@ -324,11 +327,17 @@ export default function App() {
   // Immediate Manual Save to Disk
   const handleSaveFile = async () => {
     if (!activeFile || !activeFile.path || !window.electronAPI) return;
+    setSaveState('saving');
     const serializedData = serializeFileContent(editorContent, activeFile.format, floatingObjects);
     await window.electronAPI.saveFileContent({
       filePath: activeFile.path,
       content: serializedData
     });
+    setSaveState('saved');
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      setSaveState('idle');
+    }, 2000);
   };
 
   // Intentional Return to Home Screen
@@ -410,13 +419,38 @@ export default function App() {
 
               {/* Save Button */}
               <button 
-                className="btn-compact no-drag" 
-                style={{ height: 28, fontSize: 12, padding: '0 10px' }}
+                className={`btn-compact no-drag ${saveState === 'saved' ? 'btn-saved-active' : ''}`}
+                style={{ 
+                  height: 28, 
+                  fontSize: 12, 
+                  padding: '0 12px',
+                  transition: 'all 200ms ease',
+                  backgroundColor: saveState === 'saved' ? '#10B981' : undefined,
+                  color: saveState === 'saved' ? '#FFFFFF' : undefined,
+                  borderColor: saveState === 'saved' ? '#10B981' : undefined,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
                 onClick={handleSaveFile}
                 title="Save Note (Ctrl+S)"
               >
-                <Save size={13} color="var(--accent)" />
-                <span>Save</span>
+                {saveState === 'saved' ? (
+                  <>
+                    <Check size={14} color="#FFFFFF" />
+                    <span style={{ fontWeight: 600 }}>Saved!</span>
+                  </>
+                ) : saveState === 'saving' ? (
+                  <>
+                    <Save size={13} color="var(--accent)" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={13} color="var(--accent)" />
+                    <span>Save</span>
+                  </>
+                )}
               </button>
 
               {/* Export Button */}

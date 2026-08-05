@@ -88,6 +88,26 @@ export default function ExportModal({
         el.style.boxShadow = el.classList.contains('sticky-note-card') ? '0 8px 24px rgba(0,0,0,0.12)' : 'none';
       });
 
+      // Explicitly transfer computed background colors and text colors to clone for html2canvas fidelity
+      const origNodes = Array.from(sourcePaper.querySelectorAll('*'));
+      const cloneNodes = Array.from(clone.querySelectorAll('*'));
+      origNodes.forEach((origEl, idx) => {
+        const cloneEl = cloneNodes[idx];
+        if (!cloneEl) return;
+        const computed = window.getComputedStyle(origEl);
+        if (computed.backgroundColor && computed.backgroundColor !== 'rgba(0, 0, 0, 0)' && computed.backgroundColor !== 'transparent') {
+          cloneEl.style.backgroundColor = computed.backgroundColor;
+        }
+        if (computed.color) {
+          cloneEl.style.color = computed.color;
+        }
+        if (origEl.classList.contains('sticky-note-card') || origEl.classList.contains('text-block-card')) {
+          cloneEl.style.backgroundColor = computed.backgroundColor;
+          cloneEl.style.color = computed.color;
+          cloneEl.style.opacity = '1';
+        }
+      });
+
       clone.style.position = 'absolute';
       clone.style.left = '-9999px';
       clone.style.top = '-9999px';

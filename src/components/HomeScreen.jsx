@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import appLogo from '../assets/app-logo.svg';
 import { 
   Plus, 
   FolderOpen, 
@@ -107,8 +108,8 @@ export default function HomeScreen({
       <header className="home-header">
         {/* LEFT: App Logo, Title, Subtitle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="home-logo-box" style={{ width: 44, height: 44, borderRadius: 14, marginBottom: 0 }}>
-            <BookOpen size={22} color="#0078D4" />
+          <div className="home-logo-box" style={{ width: 44, height: 44, borderRadius: 14, marginBottom: 0, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={appLogo} alt="Study Notes" style={{ width: 34, height: 34 }} />
           </div>
           <div>
             <h1 className="home-title" style={{ fontSize: 20, margin: 0, textAlign: 'left', lineHeight: 1.1 }}>
