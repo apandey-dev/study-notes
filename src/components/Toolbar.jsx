@@ -19,7 +19,8 @@ import {
   Image as ImageIcon,
   StickyNote,
   FileText,
-  Share2
+  Share2,
+  Table as TableIcon
 } from 'lucide-react';
 
 // 15 PREMIUM STUDY PALETTE COLORS
@@ -50,6 +51,7 @@ export default function Toolbar({
   onInsertImage,
   onAddStickyNote,
   onAddFloatingTextBlock,
+  onOpenInsertTableModal,
   isConnectionModeActive,
   onToggleConnectionMode
 }) {
@@ -325,6 +327,17 @@ export default function Toolbar({
 
         {activePopup === 'insert' && !isTxtFormat && (
           <div className="toolbar-group-popover wide">
+            <button 
+              className="list-popover-item"
+              onClick={() => {
+                onOpenInsertTableModal && onOpenInsertTableModal();
+                setActivePopup(null);
+              }}
+            >
+              <TableIcon size={16} color="#8B5CF6" />
+              <span>Insert Table</span>
+            </button>
+
             <button 
               className="list-popover-item"
               onClick={() => {

@@ -10,14 +10,21 @@ import { Extension } from '@tiptap/core';
 import { CustomSlashCommands } from '../utils/customSlashCommandsExtension';
 import Toolbar from './Toolbar';
 import FloatingObjectLayer from './FloatingObjectLayer';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell } from '@tiptap/extension-table-cell';
+import InsertTableModal from './InsertTableModal';
 import { 
   Heading1, Heading2, Heading3, Heading4, 
   List, ListOrdered, CheckSquare, 
   Type, Image as ImageIcon, MessageSquare, 
-  Code, Calendar, Clock, Minus, AlertTriangle, FileText
+  Code, Calendar, Clock, Minus, AlertTriangle, FileText,
+  Table as TableIcon
 } from 'lucide-react';
 
 const SLASH_SUGGESTIONS = [
+  { label: '/table', desc: 'Insert Table (Custom Rows & Cols)', icon: TableIcon, command: 'table' },
   { label: '/h1', desc: 'Heading 1', icon: Heading1, command: 'h1' },
   { label: '/h2', desc: 'Heading 2', icon: Heading2, command: 'h2' },
   { label: '/h3', desc: 'Heading 3', icon: Heading3, command: 'h3' },
@@ -38,10 +45,16 @@ const SLASH_SUGGESTIONS = [
   { label: '/time', desc: 'Insert Current Time', icon: Clock, command: 'time' }
 ];
 
-const TabKeyIndent = Extension.create({
-  name: 'tabKeyIndent',
+const FormatKeymaps = Extension.create({
+  name: 'formatKeymaps',
   addKeyboardShortcuts() {
     return {
+      'Mod-b': ({ editor }) => editor.chain().focus().toggleBold().run(),
+      'Control-b': ({ editor }) => editor.chain().focus().toggleBold().run(),
+      'Mod-i': ({ editor }) => editor.chain().focus().toggleItalic().run(),
+      'Control-i': ({ editor }) => editor.chain().focus().toggleItalic().run(),
+      'Mod-u': ({ editor }) => editor.chain().focus().toggleUnderline().run(),
+      'Control-u': ({ editor }) => editor.chain().focus().toggleUnderline().run(),
       'Tab': ({ editor }) => {
         if (editor.isActive('bulletList') || editor.isActive('orderedList') || editor.isActive('taskList')) {
           return editor.commands.sinkListItem('listItem') || editor.commands.sinkListItem('taskItem');
@@ -66,8 +79,17 @@ const EDITOR_EXTENSIONS = [
   TaskItem.configure({ nested: true }),
   TextStyle,
   Color,
+  Table.configure({
+    resizable: true,
+    HTMLAttributes: {
+      class: 'study-editor-table',
+    },
+  }),
+  TableRow,
+  TableHeader,
+  TableCell,
   CustomSlashCommands,
-  TabKeyIndent
+  FormatKeymaps
 ];
 
 export default function EditorCanvas({
@@ -90,10 +112,16 @@ export default function EditorCanvas({
   const [pendingPlacement, setPendingPlacement] = useState(null); // { type: 'image' | 'sticky' | 'textBlock', src? }
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isConnectionModeActive, setIsConnectionModeActive] = useState(false);
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
 
   // Autocomplete Menu State
   const [slashMenu, setSlashMenu] = useState(null);
   const fileInputRef = useRef(null);
+
+  const handleInsertTable = ({ rows, cols, withHeaderRow }) => {
+    if (!editor) return;
+    editor.chain().focus().insertTable({ rows, cols, withHeaderRow }).run();
+  };
 
   // Capture initial content & current file key to prevent setContent loop
   const initialContentRef = useRef(content || '');
@@ -239,6 +267,7 @@ export default function EditorCanvas({
 
     // Execute specific command
     switch (item.command) {
+      case 'table': setIsTableModalOpen(true); break;
       case 'h1': editor.chain().focus().toggleHeading({ level: 1 }).run(); break;
       case 'h2': editor.chain().focus().toggleHeading({ level: 2 }).run(); break;
       case 'h3': editor.chain().focus().toggleHeading({ level: 3 }).run(); break;
@@ -476,6 +505,13 @@ export default function EditorCanvas({
         </div>
       )}
 
+      {/* INSERT TABLE MODAL */}
+      <InsertTableModal 
+        isOpen={isTableModalOpen}
+        onClose={() => setIsTableModalOpen(false)}
+        onInsert={handleInsertTable}
+      />
+
       {/* Floating Vertical Toolbar */}
       <Toolbar 
         editor={editor}
@@ -485,6 +521,7 @@ export default function EditorCanvas({
         onInsertImage={() => handleOpenNativeImagePicker()}
         onAddStickyNote={handlePrepareInsertStickyNote}
         onAddFloatingTextBlock={handlePrepareInsertTextBlock}
+        onOpenInsertTableModal={() => setIsTableModalOpen(true)}
         isConnectionModeActive={isConnectionModeActive}
         onToggleConnectionMode={() => setIsConnectionModeActive(!isConnectionModeActive)}
       />
