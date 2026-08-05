@@ -200,7 +200,7 @@ export default function FloatingObjectLayer({
 
   // PERFECT AUTO-ARRANGE MINDMAP TREE & CONNECTIONS
   const handleAutoArrangeMindmap = () => {
-    if (cards.length === 0) return;
+    if (!cards || cards.length === 0) return;
 
     const inDegree = {};
     const childrenMap = {};
@@ -218,68 +218,65 @@ export default function FloatingObjectLayer({
       }
     });
 
-    let connectedRoots = cards.filter(c => inDegree[c.id] === 0 && childrenMap[c.id].length > 0).map(c => c.id);
-    
-    if (connectedRoots.length === 0) {
-      connectedRoots = cards.filter(c => inDegree[c.id] === 0).map(c => c.id);
-    }
-    if (connectedRoots.length === 0 && cards.length > 0) {
-      connectedRoots = [cards[0].id];
-    }
-
-    const levels = {};
-    const queue = connectedRoots.map(id => ({ id, level: 0 }));
     const visited = new Set();
+    const levels = {};
 
-    while (queue.length > 0) {
-      const { id, level } = queue.shift();
-      if (visited.has(id)) continue;
-      visited.add(id);
-
-      if (!levels[level]) levels[level] = [];
-      levels[level].push(id);
-
-      const children = childrenMap[id] || [];
-      children.forEach(childId => {
-        if (!visited.has(childId)) {
-          queue.push({ id: childId, level: level + 1 });
-        }
-      });
+    let rootCards = cards.filter(c => inDegree[c.id] === 0 && childrenMap[c.id].length > 0);
+    if (rootCards.length === 0) {
+      rootCards = cards.filter(c => inDegree[c.id] === 0);
+    }
+    if (rootCards.length === 0 && cards.length > 0) {
+      rootCards = [cards[0]];
     }
 
-    const unvisitedCards = cards.filter(c => !visited.has(c.id));
+    rootCards.forEach(rootCard => {
+      if (visited.has(rootCard.id)) return;
+      const queue = [{ id: rootCard.id, level: 0 }];
+
+      while (queue.length > 0) {
+        const { id, level } = queue.shift();
+        if (visited.has(id)) continue;
+        visited.add(id);
+
+        if (!levels[level]) levels[level] = [];
+        levels[level].push(id);
+
+        const children = childrenMap[id] || [];
+        children.forEach(childId => {
+          if (!visited.has(childId)) {
+            queue.push({ id: childId, level: level + 1 });
+          }
+        });
+      }
+    });
+
+    // ANY card not visited yet gets its own distinct level column
+    cards.forEach(c => {
+      if (!visited.has(c.id)) {
+        visited.add(c.id);
+        const maxLevel = Object.keys(levels).length > 0 ? Math.max(...Object.keys(levels).map(Number)) + 1 : 0;
+        if (!levels[maxLevel]) levels[maxLevel] = [];
+        levels[maxLevel].push(c.id);
+      }
+    });
 
     const newPositions = {};
-    const centerY = 240;
-    const verticalGap = 200;
-    const horizontalGap = 330;
+    const startX = 80;
+    const startY = 80;
+    const gapX = 330;
+    const gapY = 210;
 
     Object.keys(levels).forEach(lvlStr => {
       const lvl = parseInt(lvlStr);
       const nodeIds = levels[lvl];
-      const count = nodeIds.length;
-      const totalHeight = (count - 1) * verticalGap;
-      const startY = centerY - (totalHeight / 2);
-      const startX = 60 + lvl * horizontalGap;
 
       nodeIds.forEach((nodeId, idx) => {
         newPositions[nodeId] = {
-          x: startX,
-          y: Math.max(60, Math.round(startY + idx * verticalGap))
+          x: startX + lvl * gapX,
+          y: startY + idx * gapY
         };
       });
     });
-
-    if (unvisitedCards.length > 0) {
-      const maxLvl = Object.keys(levels).length > 0 ? Math.max(...Object.keys(levels).map(Number)) : 0;
-      const standaloneX = 60 + (maxLvl + 1) * horizontalGap;
-      unvisitedCards.forEach((c, idx) => {
-        newPositions[c.id] = {
-          x: standaloneX,
-          y: 60 + idx * verticalGap
-        };
-      });
-    }
 
     const updatedObjects = objects.map(o => {
       if (o.type === 'connection') {
@@ -991,31 +988,6 @@ export default function FloatingObjectLayer({
                 setEditingId(obj.id);
                 setSelectedConnectionId(null);
               }
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setSelectedId(obj.id);
-              setSelectedConnectionId(null);
-
-              const cardEl = e.currentTarget;
-              const rect = cardEl.getBoundingClientRect();
-              const menuWidth = 190;
-              const menuHeight = 220;
-              const offset = 12;
-
-              let left = rect.right + offset;
-              if (left + menuWidth > window.innerWidth - 12) {
-                left = rect.left - menuWidth - offset;
-              }
-              left = Math.max(12, Math.min(left, window.innerWidth - menuWidth - 12));
-
-              let top = rect.top;
-              if (top + menuHeight > window.innerHeight - 12) {
-                top = Math.max(12, window.innerHeight - menuHeight - 12);
-              }
-
-              setContextMenu({ x: left, y: top, id: obj.id });
             }}
           >
             {/* CONNECTION HANDLES (4 connection dots directly accessible on card hover or selection) */}
