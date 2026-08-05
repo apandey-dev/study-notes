@@ -14,14 +14,24 @@ const turndownService = new TurndownService({
   codeBlockStyle: 'fenced'
 });
 
-// Preserve colored text span elements in Markdown export
-turndownService.addRule('coloredSpan', {
+// Preserve colored & styled text span elements (including indentation) in Markdown export
+turndownService.addRule('styledSpan', {
   filter: function (node) {
-    return node.tagName === 'SPAN' && node.getAttribute('style') && node.getAttribute('style').includes('color');
+    return node.tagName === 'SPAN' && node.getAttribute('style');
   },
   replacement: function (content, node) {
     const style = node.getAttribute('style');
     return `<span style="${style}">${content}</span>`;
+  }
+});
+
+// Preserve Non-breaking spaces and Tab indentation in Markdown export
+turndownService.addRule('preserveNbsp', {
+  filter: function (node) {
+    return node.nodeType === 3 && node.nodeValue && (node.nodeValue.includes('\u00a0') || node.nodeValue.includes('  '));
+  },
+  replacement: function (content, node) {
+    return node.nodeValue.replace(/\u00a0/g, '&nbsp;');
   }
 });
 
@@ -72,7 +82,10 @@ export function parseFileContent(rawText, format) {
   if (format === 'txt') {
     const html = processedText
       .split('\n')
-      .map(line => `<p>${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
+      .map(line => {
+        const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;').replace(/  /g, '&nbsp;&nbsp;');
+        return `<p>${escaped || '&nbsp;'}</p>`;
+      })
       .join('');
     return { html, floatingObjects };
   }
@@ -93,7 +106,7 @@ export function serializeFileContent(htmlContent, format, floatingObjects = []) 
   let outputText = '';
 
   if (format === 'txt') {
-    // Plain text export with clean heading decorations
+    // Plain text export with clean heading decorations, preserving tab indentation
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
 
@@ -101,25 +114,27 @@ export function serializeFileContent(htmlContent, format, floatingObjects = []) 
     tempDiv.childNodes.forEach(node => {
       if (!node) return;
       const tag = node.tagName ? node.tagName.toUpperCase() : '';
-      const text = (node.textContent || '').trim();
-      if (!text) return;
+      const rawText = node.textContent || '';
+      const cleanLine = rawText.replace(/\u00a0/g, ' ');
+
+      if (!cleanLine.trim() && tag !== 'P') return;
 
       if (tag === 'H1') {
-        const border = '='.repeat(Math.max(20, text.length));
-        txtOutput += `\n${border}\n${text}\n${border}\n\n`;
+        const border = '='.repeat(Math.max(20, cleanLine.trim().length));
+        txtOutput += `\n${border}\n${cleanLine.trim()}\n${border}\n\n`;
       } else if (tag === 'H2') {
-        const border = '-'.repeat(Math.max(16, text.length));
-        txtOutput += `\n${text}\n${border}\n\n`;
+        const border = '-'.repeat(Math.max(16, cleanLine.trim().length));
+        txtOutput += `\n${cleanLine.trim()}\n${border}\n\n`;
       } else if (tag === 'H3') {
-        txtOutput += `\n### ${text}\n\n`;
+        txtOutput += `\n### ${cleanLine.trim()}\n\n`;
       } else if (tag === 'H4') {
-        txtOutput += `\n#### ${text}\n\n`;
+        txtOutput += `\n#### ${cleanLine.trim()}\n\n`;
       } else {
-        txtOutput += `${text}\n`;
+        txtOutput += `${cleanLine}\n`;
       }
     });
 
-    outputText = txtOutput.trim();
+    outputText = txtOutput.replace(/^\n+/, '');
   } else {
     // Markdown (.md) Serialization
     try {

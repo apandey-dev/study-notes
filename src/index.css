@@ -631,6 +631,7 @@ html, body, #root {
 }
 
 .study-paper.ruled-page {
+  padding: 36px 36px 36px 36px !important;
   background-image: linear-gradient(var(--ruled-line) 1px, transparent 1px);
   background-size: 100% 36px;
   background-position: 0 36px;
@@ -844,6 +845,33 @@ html, body, #root {
   direction: ltr !important;
   text-align: left !important;
   writing-mode: horizontal-tb !important;
+}
+
+/* HORIZONTAL RULE / DIVIDER ALIGNMENT FOR RULED NOTEBOOKS */
+.ProseMirror hr {
+  margin: 17px 0 17px 0 !important;
+  border: none !important;
+  border-top: 2px solid var(--accent) !important;
+  height: 0 !important;
+  box-sizing: border-box !important;
+  clear: both;
+}
+
+.ProseMirror blockquote {
+  margin: 0 !important;
+  padding: 0 0 0 16px !important;
+  border-left: 3px solid var(--accent) !important;
+  line-height: 36px;
+  min-height: 36px;
+}
+
+.ProseMirror .callout-box {
+  margin: 0 !important;
+  padding: 0 14px !important;
+  line-height: 36px;
+  min-height: 36px;
+  border-radius: 6px;
+  box-sizing: border-box;
 }
 
 .ProseMirror ol {

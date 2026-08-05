@@ -6,6 +6,7 @@ import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import { Extension } from '@tiptap/core';
 import { CustomSlashCommands } from '../utils/customSlashCommandsExtension';
 import Toolbar from './Toolbar';
 import FloatingObjectLayer from './FloatingObjectLayer';
@@ -37,6 +38,26 @@ const SLASH_SUGGESTIONS = [
   { label: '/time', desc: 'Insert Current Time', icon: Clock, command: 'time' }
 ];
 
+const TabKeyIndent = Extension.create({
+  name: 'tabKeyIndent',
+  addKeyboardShortcuts() {
+    return {
+      'Tab': ({ editor }) => {
+        if (editor.isActive('bulletList') || editor.isActive('orderedList') || editor.isActive('taskList')) {
+          return editor.commands.sinkListItem('listItem') || editor.commands.sinkListItem('taskItem');
+        }
+        return editor.commands.insertContent('\u00a0\u00a0\u00a0\u00a0');
+      },
+      'Shift-Tab': ({ editor }) => {
+        if (editor.isActive('bulletList') || editor.isActive('orderedList') || editor.isActive('taskList')) {
+          return editor.commands.liftListItem('listItem') || editor.commands.liftListItem('taskItem');
+        }
+        return false;
+      }
+    };
+  }
+});
+
 // STATIC EXTENSIONS ARRAY - Defined outside component to prevent reference changes across re-renders
 const EDITOR_EXTENSIONS = [
   StarterKit,
@@ -45,7 +66,8 @@ const EDITOR_EXTENSIONS = [
   TaskItem.configure({ nested: true }),
   TextStyle,
   Color,
-  CustomSlashCommands
+  CustomSlashCommands,
+  TabKeyIndent
 ];
 
 export default function EditorCanvas({
