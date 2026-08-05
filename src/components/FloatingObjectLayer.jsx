@@ -419,7 +419,7 @@ export default function FloatingObjectLayer({
               id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
               type: 'connection',
               fromId: connectingState.fromId,
-              fromHandle: smartPair.fromHandle,
+              fromHandle: connectingState.fromHandle || smartPair.fromHandle,
               toId: targetCard.id,
               toHandle: smartPair.toHandle,
               lineType: 'bezier',
@@ -604,14 +604,15 @@ export default function FloatingObjectLayer({
           const toObj = cards.find(c => c.id === conn.toId);
           if (!fromObj || !toObj) return null;
 
-          // DYNAMIC AUTO-ANCHORING: Use smart facing handles dynamically
-          const smartPair = getSmartHandlePair(fromObj, toObj);
-          const srcCoords = getHandleCoords(fromObj, smartPair.fromHandle);
-          const tgtCoords = getHandleCoords(toObj, smartPair.toHandle);
+          // Preserve user handle choice if present, otherwise use smart pair
+          const fromHandle = conn.fromHandle || smartPair.fromHandle;
+          const toHandle = conn.toHandle || smartPair.toHandle;
+          const srcCoords = getHandleCoords(fromObj, fromHandle);
+          const tgtCoords = getHandleCoords(toObj, toHandle);
 
           // Check if any third card intersects the path area between src and tgt
           const doesIntersectOtherNode = cards.some(c => {
-            if (c.id === fObj.id || c.id === tObj.id) return false;
+            if (c.id === fromObj.id || c.id === toObj.id) return false;
             const minX = Math.min(srcCoords.x, tgtCoords.x);
             const maxX = Math.max(srcCoords.x, tgtCoords.x);
             const minY = Math.min(srcCoords.y, tgtCoords.y);
@@ -871,8 +872,8 @@ export default function FloatingObjectLayer({
               setContextMenu({ x: left, y: top, id: obj.id });
             }}
           >
-            {/* CONNECTION HANDLES (Displayed ONLY on currently hovered card during Connection Mode) */}
-            {isConnectionModeActive && (isHovered || connectingState?.fromId === obj.id) && (
+            {/* CONNECTION HANDLES (4 connection dots directly accessible on card hover or selection) */}
+            {(isHovered || isSelected || connectingState?.fromId === obj.id) && (
               <>
                 {['top', 'bottom', 'left', 'right'].map(hName => (
                   <div

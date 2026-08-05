@@ -223,7 +223,6 @@ export default function Toolbar({
             >
               <List size={15} />
               <span>Bullet List</span>
-              <span className="shortcut-tag">Ctrl+Shift+7</span>
             </button>
 
             <button 
@@ -232,7 +231,6 @@ export default function Toolbar({
             >
               <ListOrdered size={15} />
               <span>Numbered List</span>
-              <span className="shortcut-tag">Ctrl+Shift+8</span>
             </button>
 
             <button 
@@ -241,7 +239,6 @@ export default function Toolbar({
             >
               <CheckSquare size={15} />
               <span>Checklist</span>
-              <span className="shortcut-tag">Ctrl+Shift+9</span>
             </button>
           </div>
         )}
@@ -267,24 +264,22 @@ export default function Toolbar({
 
         {activePopup === 'colors' && !isTxtFormat && (
           <div className="toolbar-group-popover color-popover">
-            <div className="popover-tabs" style={{ display: 'flex', gap: 4, paddingBottom: 6, marginBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
+            <div className="popover-tabs" style={{ display: 'flex', gap: 6, paddingBottom: 6, marginBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
               <button 
-                className={`tab-btn ${colorSubTab === 'text' ? 'active' : ''}`}
+                className={`tab-btn icon-only-tab ${colorSubTab === 'text' ? 'active' : ''}`}
                 onClick={() => setColorSubTab('text')}
                 title="Text Color"
-                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, height: 30, borderRadius: 6 }}
               >
-                <Type size={14} />
-                <span>Text Color</span>
+                <Type size={16} />
               </button>
               <button 
-                className={`tab-btn ${colorSubTab === 'heading' ? 'active' : ''}`}
+                className={`tab-btn icon-only-tab ${colorSubTab === 'heading' ? 'active' : ''}`}
                 onClick={() => setColorSubTab('heading')}
                 title="Heading Color"
-                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, height: 30, borderRadius: 6 }}
               >
-                <Heading1 size={14} />
-                <span>Heading Color</span>
+                <Heading1 size={16} />
               </button>
             </div>
 
