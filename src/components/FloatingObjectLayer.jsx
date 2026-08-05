@@ -25,7 +25,8 @@ import {
   Eraser,
   LayoutGrid,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  MoreVertical
 } from 'lucide-react';
 
 // SOFT PAPER-LIKE STICKY NOTE PALETTE (10 low-saturation study colors)
@@ -185,6 +186,13 @@ export default function FloatingObjectLayer({
   const [hoveredObjectId, setHoveredObjectId] = useState(null);
 
   const [contextMenu, setContextMenu] = useState(null); // { x, y, id }
+  const [activeCardMenuId, setActiveCardMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => setActiveCardMenuId(null);
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
 
   // FREEHAND INK / DRAWING STATES
   const [isDrawing, setIsDrawing] = useState(false);
@@ -984,86 +992,136 @@ export default function FloatingObjectLayer({
               </>
             )}
 
-            {/* ACTION TOOLBAR ABOVE SELECTED OBJECT */}
+            {/* MINIMAL SINGLE 3-DOTS CARD OPTIONS BUTTON & POPPER */}
             {isSelected && !isConnectionModeActive && (
-              <div className="sticky-note-mini-toolbar" onClick={(e) => e.stopPropagation()}>
-                {isImage && (
-                  <button 
-                    className="sticky-toolbar-btn" 
-                    onClick={() => handleReplaceImageClick(obj.id)}
-                    title="Replace Image"
+              <div className="card-minimal-menu-container" style={{ position: 'absolute', top: 6, right: 6, zIndex: 99 }}>
+                <button
+                  type="button"
+                  className="btn-titlebar-icon minimal-card-menu-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCardMenuId(activeCardMenuId === obj.id ? null : obj.id);
+                  }}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    background: 'var(--bg-card)',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                  title="Card Options"
+                >
+                  <MoreVertical size={13} color="var(--text-primary)" />
+                </button>
+
+                {activeCardMenuId === obj.id && (
+                  <div 
+                    className="toolbar-group-popover card-options-popover"
+                    style={{
+                      position: 'absolute',
+                      top: 26,
+                      right: 0,
+                      zIndex: 99999,
+                      width: 155,
+                      padding: 5,
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 10,
+                      boxShadow: '0 10px 28px rgba(0,0,0,0.22)'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <ImageIcon size={14} color="#10B981" />
-                  </button>
-                )}
-
-                {isStickyNote && (
-                  <div style={{ position: 'relative' }}>
-                    <button 
-                      className="sticky-toolbar-btn" 
-                      onClick={() => setActiveColorPopoverId(activeColorPopoverId === obj.id ? null : obj.id)}
-                      title="Background Color"
-                    >
-                      <Palette size={14} color={currentTextColor} />
-                    </button>
-
-                    {activeColorPopoverId === obj.id && (
-                      <div className="sticky-color-popover">
-                        {STICKY_COLORS.map(c => (
-                          <button
-                            key={c.name}
-                            className="sticky-swatch-btn"
-                            style={{ background: c.value, border: '1px solid rgba(0,0,0,0.2)' }}
-                            title={c.name}
-                            onClick={() => handleChangeStickyColor(obj.id, c)}
-                          />
-                        ))}
+                    {isStickyNote && (
+                      <div style={{ padding: '4px 6px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+                          Color
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
+                          {STICKY_COLORS.map(c => (
+                            <button
+                              key={c.name}
+                              className="sticky-swatch-btn"
+                              style={{ width: 18, height: 18, background: c.value, border: '1px solid rgba(0,0,0,0.2)' }}
+                              title={c.name}
+                              onClick={() => { handleChangeStickyColor(obj.id, c); setActiveCardMenuId(null); }}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
+
+                    {(isStickyNote || isTextBlock) && (
+                      <button
+                        type="button"
+                        className="list-popover-item"
+                        onClick={() => { setEditingId(obj.id); setActiveCardMenuId(null); }}
+                        style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+                      >
+                        <Edit3 size={13} color="var(--accent)" />
+                        <span>Edit Content</span>
+                      </button>
+                    )}
+
+                    {isImage && (
+                      <button
+                        type="button"
+                        className="list-popover-item"
+                        onClick={() => { handleReplaceImageClick(obj.id); setActiveCardMenuId(null); }}
+                        style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+                      >
+                        <ImageIcon size={13} color="#10B981" />
+                        <span>Replace Image</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="list-popover-item"
+                      onClick={() => { handleDuplicateObject(obj.id); setActiveCardMenuId(null); }}
+                      style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+                    >
+                      <Copy size={13} color="#0078D4" />
+                      <span>Duplicate</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="list-popover-item"
+                      onClick={() => { handleBringForward(obj.id); setActiveCardMenuId(null); }}
+                      style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+                    >
+                      <ArrowUp size={13} color="var(--text-secondary)" />
+                      <span>Bring Forward</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="list-popover-item"
+                      onClick={() => { handleSendBackward(obj.id); setActiveCardMenuId(null); }}
+                      style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+                    >
+                      <ArrowDown size={13} color="var(--text-secondary)" />
+                      <span>Send Backward</span>
+                    </button>
+
+                    <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 0' }} />
+
+                    <button
+                      type="button"
+                      className="list-popover-item"
+                      onClick={() => { handleDeleteObject(obj.id); setActiveCardMenuId(null); }}
+                      style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444', width: '100%' }}
+                    >
+                      <Trash2 size={13} color="#EF4444" />
+                      <span>Delete Card</span>
+                    </button>
                   </div>
                 )}
-
-                {(isStickyNote || isTextBlock) && (
-                  <button 
-                    className={`sticky-toolbar-btn ${isEditing ? 'active' : ''}`}
-                    onClick={() => setEditingId(isEditing ? null : obj.id)}
-                    title={isEditing ? "Exit Edit Mode (Esc)" : "Edit Text (Double Click)"}
-                  >
-                    <Edit3 size={14} color="var(--accent)" />
-                  </button>
-                )}
-
-                <button 
-                  className="sticky-toolbar-btn" 
-                  onClick={() => handleDuplicateObject(obj.id)}
-                  title="Duplicate (Ctrl+D)"
-                >
-                  <Copy size={14} color="#0078D4" />
-                </button>
-
-                <button 
-                  className="sticky-toolbar-btn" 
-                  onClick={() => handleBringForward(obj.id)}
-                  title="Bring Forward (Ctrl+Shift+])"
-                >
-                  <ArrowUp size={14} />
-                </button>
-
-                <button 
-                  className="sticky-toolbar-btn" 
-                  onClick={() => handleSendBackward(obj.id)}
-                  title="Send Backward (Ctrl+Shift+[)"
-                >
-                  <ArrowDown size={14} />
-                </button>
-
-                <button 
-                  className="sticky-toolbar-btn danger" 
-                  onClick={() => handleDeleteObject(obj.id)}
-                  title="Delete (Del)"
-                >
-                  <Trash2 size={14} />
-                </button>
               </div>
             )}
 
