@@ -429,18 +429,20 @@ export default function App() {
 
                 {isFontDropdownOpen && (
                   <div 
-                    className="toolbar-group-popover" 
+                    className="toolbar-group-popover font-popover-dropdown" 
                     style={{ 
                       position: 'absolute', 
-                      top: 34, 
+                      top: 'calc(100% + 4px)', 
                       right: 0, 
                       width: 170, 
-                      zIndex: 9999, 
+                      maxHeight: 200,
+                      overflowY: 'auto',
+                      zIndex: 999999, 
                       padding: 4,
                       background: 'var(--bg-card)',
                       border: '1px solid var(--border-subtle)',
                       borderRadius: 8,
-                      boxShadow: '0 6px 18px rgba(0,0,0,0.12)'
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.16)'
                     }}
                   >
                     {FONT_OPTIONS.map(font => (
@@ -592,6 +594,7 @@ export default function App() {
         <EditorCanvas 
           content={editorContent}
           onContentChange={setEditorContent}
+          onActiveFontChange={(fontLabel) => setSelectedFontLabel(fontLabel)}
           noteType={noteType}
           fileFormat={activeFile?.format || 'md'}
           pageSize={pageSize}

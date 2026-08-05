@@ -14,6 +14,17 @@ const turndownService = new TurndownService({
   codeBlockStyle: 'fenced'
 });
 
+// Preserve full HTML <table> structure in Markdown serialization & reload
+turndownService.addRule('keepTables', {
+  filter: ['table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'],
+  replacement: function (content, node) {
+    if (node.tagName === 'TABLE') {
+      return '\n\n' + node.outerHTML + '\n\n';
+    }
+    return content;
+  }
+});
+
 // Preserve colored & styled text span elements (including indentation) in Markdown export
 turndownService.addRule('styledSpan', {
   filter: function (node) {
@@ -80,6 +91,9 @@ export function parseFileContent(rawText, format) {
     .replace(/^\.\.h4:\s*(.*)$/gm, '#### $1');
 
   if (format === 'txt') {
+    if (processedText.includes('<table') || processedText.includes('<p>') || processedText.includes('<div')) {
+      return { html: processedText, floatingObjects };
+    }
     const html = processedText
       .split('\n')
       .map(line => {

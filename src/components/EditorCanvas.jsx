@@ -97,6 +97,7 @@ const EDITOR_EXTENSIONS = [
 export default function EditorCanvas({
   content,
   onContentChange,
+  onActiveFontChange,
   noteType,
   fileFormat,
   pageSize,
@@ -141,6 +142,19 @@ export default function EditorCanvas({
     },
     content: initialContentRef.current,
     autofocus: 'start',
+    onSelectionUpdate: ({ editor: ed }) => {
+      const attrs = ed.getAttributes('textStyle');
+      const family = attrs.fontFamily;
+      if (family && onActiveFontChange) {
+        if (family.includes('Times New Roman')) {
+          onActiveFontChange('Times New Roman');
+        } else if (family.includes('Fredoka')) {
+          onActiveFontChange('Fredoka');
+        } else if (family.includes('Playpen')) {
+          onActiveFontChange('Playpen Sans');
+        }
+      }
+    },
     onUpdate: ({ editor }) => {
       onContentChange(editor.getHTML());
 
