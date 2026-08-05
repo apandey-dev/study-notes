@@ -8,6 +8,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Extension } from '@tiptap/core';
 import { CustomSlashCommands } from '../utils/customSlashCommandsExtension';
+import { FontFamily } from '../utils/customFontFamilyExtension';
 import Toolbar from './Toolbar';
 import FloatingObjectLayer from './FloatingObjectLayer';
 import { Table } from '@tiptap/extension-table';
@@ -78,6 +79,7 @@ const EDITOR_EXTENSIONS = [
   TaskList,
   TaskItem.configure({ nested: true }),
   TextStyle,
+  FontFamily,
   Color,
   Table.configure({
     resizable: true,
@@ -133,6 +135,7 @@ export default function EditorCanvas({
     editorProps: {
       attributes: {
         dir: 'ltr',
+        spellcheck: 'false',
         style: 'direction: ltr !important; text-align: left !important; unicode-bidi: isolate;'
       }
     },

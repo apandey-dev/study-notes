@@ -847,6 +847,21 @@ html, body, #root {
   writing-mode: horizontal-tb !important;
 }
 
+/* EXPLICIT BOLD, ITALIC, AND UNDERLINE FORMATTING FOR ALL FONTS (INCLUDING TIMES NEW ROMAN) */
+.ProseMirror strong,
+.ProseMirror b {
+  font-weight: 700 !important;
+}
+
+.ProseMirror em,
+.ProseMirror i {
+  font-style: italic !important;
+}
+
+.ProseMirror u {
+  text-decoration: underline !important;
+}
+
 /* HORIZONTAL RULE / DIVIDER ALIGNMENT FOR RULED NOTEBOOKS */
 .ProseMirror hr {
   margin: 17px 0 17px 0 !important;

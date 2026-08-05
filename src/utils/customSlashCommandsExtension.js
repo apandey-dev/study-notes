@@ -177,6 +177,26 @@ export const CustomSlashCommands = Extension.create({
         }
       }),
 
+      // Font Triggers: .playpen., .fredoka., .roman.
+      new InputRule({
+        find: /(?:\.playpen\.|^\.playpen\.)(?:\s|$)/,
+        handler: ({ range, chain }) => {
+          chain().focus().deleteRange(range).setFontFamily("'Playpen Sans', cursive, sans-serif").run();
+        }
+      }),
+      new InputRule({
+        find: /(?:\.fredoka\.|^\.fredoka\.)(?:\s|$)/,
+        handler: ({ range, chain }) => {
+          chain().focus().deleteRange(range).setFontFamily("'Fredoka', sans-serif").run();
+        }
+      }),
+      new InputRule({
+        find: /(?:\.roman\.|^\.roman\.)(?:\s|$)/,
+        handler: ({ range, chain }) => {
+          chain().focus().deleteRange(range).setFontFamily("'Times New Roman', Times, serif").run();
+        }
+      }),
+
       // Quick Emojis
       new InputRule({ find: /:tick:$/, handler: ({ range, chain }) => chain().focus().deleteRange(range).insertContent('✓ ').run() }),
       new InputRule({ find: /:cross:$/, handler: ({ range, chain }) => chain().focus().deleteRange(range).insertContent('✗ ').run() }),

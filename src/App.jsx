@@ -17,7 +17,9 @@ import {
   Grid,
   FileText,
   X,
-  Check
+  Check,
+  ChevronDown,
+  Type
 } from 'lucide-react';
 
 const SESSION_STORAGE_KEY = 'fluent_notes_active_session';
@@ -53,11 +55,26 @@ export default function App() {
   const [customWidth] = useState(800);
   const [customHeight] = useState(1100);
 
-  // Modals & Panels
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [saveState, setSaveState] = useState('idle'); // 'idle' | 'saving' | 'saved'
+  const [isFontDropdownOpen, setIsFontDropdownOpen] = useState(false);
+  const [selectedFontLabel, setSelectedFontLabel] = useState('Playpen Sans');
+
+  const FONT_OPTIONS = [
+    { label: 'Playpen Sans', value: "'Playpen Sans', cursive, sans-serif" },
+    { label: 'Fredoka', value: "'Fredoka', sans-serif" },
+    { label: 'Times New Roman', value: "'Times New Roman', Times, serif" }
+  ];
+
+  const handleSelectFont = (fontItem) => {
+    setSelectedFontLabel(fontItem.label);
+    setIsFontDropdownOpen(false);
+    if (editorInstanceRef.current) {
+      editorInstanceRef.current.chain().focus().setFontFamily(fontItem.value).run();
+    }
+  };
 
   const paperRef = useRef(null);
   const editorInstanceRef = useRef(null);
@@ -395,6 +412,62 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {screen === 'editor' && (
             <>
+              {/* Custom Font Picker Dropdown */}
+              <div style={{ position: 'relative' }} className="no-drag">
+                <button 
+                  className="btn-compact" 
+                  style={{ height: 28, fontSize: 12, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 5 }}
+                  onClick={() => setIsFontDropdownOpen(!isFontDropdownOpen)}
+                  title="Choose Font (Playpen Sans, Fredoka, Times New Roman)"
+                >
+                  <Type size={13} color="var(--accent)" />
+                  <span style={{ fontFamily: selectedFontLabel === 'Times New Roman' ? 'Times New Roman, serif' : (selectedFontLabel === 'Fredoka' ? 'Fredoka, sans-serif' : 'Playpen Sans, cursive') }}>
+                    {selectedFontLabel}
+                  </span>
+                  <ChevronDown size={12} color="var(--text-muted)" />
+                </button>
+
+                {isFontDropdownOpen && (
+                  <div 
+                    className="toolbar-group-popover" 
+                    style={{ 
+                      position: 'absolute', 
+                      top: 34, 
+                      right: 0, 
+                      width: 170, 
+                      zIndex: 9999, 
+                      padding: 4,
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 8,
+                      boxShadow: '0 6px 18px rgba(0,0,0,0.12)'
+                    }}
+                  >
+                    {FONT_OPTIONS.map(font => (
+                      <button
+                        key={font.label}
+                        className={`list-popover-item ${selectedFontLabel === font.label ? 'active' : ''}`}
+                        style={{ 
+                          fontFamily: font.value, 
+                          fontSize: 13, 
+                          padding: '8px 10px', 
+                          borderRadius: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          width: '100%',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => handleSelectFont(font)}
+                      >
+                        <span>{font.label}</span>
+                        {selectedFontLabel === font.label && <Check size={13} color="var(--accent)" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Ruled / Blank Toggle */}
               <button 
                 className="btn-compact no-drag" 

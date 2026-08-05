@@ -370,17 +370,6 @@ export default function Toolbar({
           </div>
         )}
       </div>
-
-      {/* 6. CONNECTIONS MODE TOGGLE BUTTON */}
-      <button 
-        className={`btn-vertical-icon ${isConnectionModeActive ? 'active' : ''}`}
-        onClick={onToggleConnectionMode}
-        title={isConnectionModeActive ? "Exit Connection Mode (Esc)" : "Connection Mode (Link Nodes)"}
-        style={{ opacity: isTxtFormat ? 0.4 : 1 }}
-        disabled={isTxtFormat}
-      >
-        <Share2 size={18} color={isConnectionModeActive ? 'var(--accent)' : 'currentColor'} />
-      </button>
     </div>
   );
 }
