@@ -476,7 +476,7 @@ export default function EditorCanvas({
           }}
         >
           {/* CONTEXTUAL TABLE ACTION TOOLBAR (Visible when cursor is inside a table) */}
-          {(isInsideTable || Boolean(editor && (editor.isActive('table') || editor.isActive('tableCell') || editor.isActive('tableHeader') || editor.isActive('tableRow')))) && (
+          {Boolean(editor && (editor.isActive('table') || editor.isActive('tableCell') || editor.isActive('tableHeader') || editor.isActive('tableRow'))) && (
             <div 
               className="table-floating-toolbar"
               style={{

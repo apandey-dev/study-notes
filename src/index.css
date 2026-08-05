@@ -1408,6 +1408,18 @@ html, body, #root {
   width: 160px;
 }
 
+/* TOP BAR FONT PICKER DROPDOWN POSITIONING FIX */
+.font-popover-dropdown {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  right: 0 !important;
+  left: auto !important;
+  transform: none !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  z-index: 999999 !important;
+}
+
 .popover-section-label {
   font-size: 10px;
   font-weight: 700;
