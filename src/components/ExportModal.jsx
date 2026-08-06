@@ -21,35 +21,47 @@ export default function ExportModal({
   paperRef 
 }) {
   const [exportFormat, setExportFormat] = useState('pdf'); // 'pdf' | 'png'
+  const [exportTheme, setExportTheme] = useState('current'); // 'current' | 'light' | 'dark'
   const [pageSize, setPageSize] = useState('A4');
   const [orientation, setOrientation] = useState('portrait'); // 'portrait' | 'landscape'
   const [qualityPreset, setQualityPreset] = useState('standard'); // 'standard' | 'high' | 'print'
   const [preserveNotebookStyle, setPreserveNotebookStyle] = useState(true);
 
   const [estimatedPages, setEstimatedPages] = useState(1);
-  const [estimatedSize, setEstimatedSize] = useState('~4 MB');
+  const [estimatedSize, setEstimatedSize] = useState('~2 MB');
 
   const [isExporting, setIsExporting] = useState(false);
   const [progressStage, setProgressStage] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
 
-  // Recalculate estimated page count and file size based on notebook height
+  // Recalculate estimated page count based on actual content bounds
   useEffect(() => {
-    if (paperRef && paperRef.current) {
-      const scrollHeight = paperRef.current.scrollHeight || 1000;
-      // Standard A4 aspect ratio height at 100% width is ~1120px
+    if (paperRef && paperRef.current && isOpen) {
+      const sourcePaper = paperRef.current;
+      let maxContentBottom = 700;
+      const editorElem = sourcePaper.querySelector('.ProseMirror');
+      if (editorElem) {
+        maxContentBottom = Math.max(maxContentBottom, editorElem.offsetTop + editorElem.offsetHeight);
+      }
+      const floatingCards = sourcePaper.querySelectorAll('.floating-object-wrapper');
+      floatingCards.forEach(card => {
+        const topVal = parseFloat(card.style.top) || 0;
+        const heightVal = parseFloat(card.style.height) || 200;
+        maxContentBottom = Math.max(maxContentBottom, topVal + heightVal + 60);
+      });
+
       const pageHeightPx = orientation === 'portrait' ? 1120 : 800;
-      const pages = Math.max(1, Math.ceil(scrollHeight / pageHeightPx));
+      const pages = Math.max(1, Math.ceil(maxContentBottom / pageHeightPx));
       setEstimatedPages(pages);
 
       const sizeMap = {
-        standard: (pages * 2.5).toFixed(1) + ' MB',
-        high: (pages * 5.2).toFixed(1) + ' MB',
-        print: (pages * 12.5).toFixed(1) + ' MB'
+        standard: (pages * 1.5).toFixed(1) + ' MB',
+        high: (pages * 3.5).toFixed(1) + ' MB',
+        print: (pages * 8.0).toFixed(1) + ' MB'
       };
-      setEstimatedSize('~' + (sizeMap[qualityPreset] || '4 MB'));
+      setEstimatedSize('~' + (sizeMap[qualityPreset] || '2 MB'));
     }
-  }, [paperRef, orientation, qualityPreset, pageSize, isOpen]);
+  }, [paperRef, orientation, qualityPreset, pageSize, isOpen, exportTheme]);
 
   if (!isOpen) return null;
 
@@ -64,80 +76,86 @@ export default function ExportModal({
     setIsCompleted(false);
 
     try {
-      // Stage 1: Preparing Document & Cloning
+      // Stage 1: Preparing Document
       setProgressStage('Preparing Document...');
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 150));
 
       const sourcePaper = paperRef.current;
-      const totalHeight = sourcePaper.scrollHeight;
-      const totalWidth = sourcePaper.offsetWidth;
+      const isAppDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const effectiveTheme = exportTheme === 'current' ? (isAppDark ? 'dark' : 'light') : exportTheme;
 
-      // Clone off-screen for clean, UI-stripped rendering
+      // Calculate Content Height (prevents 56-page blank overflow)
+      let maxContentBottom = 700;
+      const editorElem = sourcePaper.querySelector('.ProseMirror');
+      if (editorElem) {
+        maxContentBottom = Math.max(maxContentBottom, editorElem.offsetTop + editorElem.offsetHeight);
+      }
+      const floatingCards = sourcePaper.querySelectorAll('.floating-object-wrapper');
+      floatingCards.forEach(card => {
+        const topVal = parseFloat(card.style.top) || 0;
+        const heightVal = parseFloat(card.style.height) || 200;
+        maxContentBottom = Math.max(maxContentBottom, topVal + heightVal + 60);
+      });
+
+      const exportWidth = sourcePaper.offsetWidth || 800;
+      const exportHeight = Math.min(maxContentBottom + 80, 15000);
+
+      // Create styled container for clean off-screen rendering with data-theme
+      const tempContainer = document.createElement('div');
+      tempContainer.setAttribute('data-theme', effectiveTheme);
+      tempContainer.style.position = 'fixed';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '0';
+      tempContainer.style.width = `${exportWidth}px`;
+      tempContainer.style.height = `${exportHeight}px`;
+      tempContainer.style.backgroundColor = effectiveTheme === 'dark' ? '#1E1E1E' : '#FFFFFF';
+      tempContainer.style.color = effectiveTheme === 'dark' ? '#F4F4F5' : '#18181B';
+      tempContainer.style.overflow = 'hidden';
+
+      // Clone paper node
       const clone = sourcePaper.cloneNode(true);
+      clone.style.width = `${exportWidth}px`;
+      clone.style.height = `${exportHeight}px`;
+      clone.style.position = 'relative';
+      clone.style.top = '0';
+      clone.style.left = '0';
+      clone.style.transform = 'none';
+      clone.style.backgroundColor = effectiveTheme === 'dark' ? '#1E1E1E' : '#FFFFFF';
 
-      // Strip selection handles, resize points, and floating toolbars
+      // Strip UI controls (resize points, toolbar buttons, selected outlines)
       const UI_ELEMENTS_TO_REMOVE = clone.querySelectorAll(
-        '.resize-handle, .sticky-note-mini-toolbar, .drag-header-bar, .color-picker-popover, .list-group-popover'
+        '.resize-handle, .sticky-note-mini-toolbar, .drag-header-bar, .card-minimal-menu-container, .connection-handle'
       );
       UI_ELEMENTS_TO_REMOVE.forEach(el => el.remove());
 
       const SELECTED_WRAPPERS = clone.querySelectorAll('.selected');
       SELECTED_WRAPPERS.forEach(el => {
         el.classList.remove('selected');
-        el.style.borderColor = el.classList.contains('sticky-note-card') ? 'rgba(0,0,0,0.08)' : 'transparent';
-        el.style.boxShadow = el.classList.contains('sticky-note-card') ? '0 8px 24px rgba(0,0,0,0.12)' : 'none';
+        el.style.border = el.classList.contains('sticky-note-card') ? '1px solid rgba(0,0,0,0.08)' : '1px solid transparent';
+        el.style.boxShadow = el.classList.contains('sticky-note-card') ? '0 6px 18px rgba(0,0,0,0.08)' : 'none';
       });
 
-      // Explicitly transfer computed background colors and text colors to clone for html2canvas fidelity
-      const origNodes = Array.from(sourcePaper.querySelectorAll('*'));
-      const cloneNodes = Array.from(clone.querySelectorAll('*'));
-      origNodes.forEach((origEl, idx) => {
-        const cloneEl = cloneNodes[idx];
-        if (!cloneEl) return;
-        const computed = window.getComputedStyle(origEl);
-        if (computed.backgroundColor && computed.backgroundColor !== 'rgba(0, 0, 0, 0)' && computed.backgroundColor !== 'transparent') {
-          cloneEl.style.backgroundColor = computed.backgroundColor;
-        }
-        if (computed.color) {
-          cloneEl.style.color = computed.color;
-        }
-        if (origEl.classList.contains('sticky-note-card') || origEl.classList.contains('text-block-card')) {
-          cloneEl.style.backgroundColor = computed.backgroundColor;
-          cloneEl.style.color = computed.color;
-          cloneEl.style.opacity = '1';
-        }
-      });
+      tempContainer.appendChild(clone);
+      document.body.appendChild(tempContainer);
 
-      clone.style.position = 'absolute';
-      clone.style.left = '-9999px';
-      clone.style.top = '-9999px';
-      clone.style.transform = 'none';
-      document.body.appendChild(clone);
-
-      const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
-      const bgColor = preserveNotebookStyle 
-        ? (isDarkMode ? '#252526' : '#FFFFFF') 
-        : '#FFFFFF';
-
-      // Quality preset scale & compression configuration
-      const configMap = {
+      const presetConfigMap = {
         standard: { scale: 2, quality: 0.85, format: 'JPEG' },
-        high: { scale: 3, quality: 0.92, format: 'JPEG' },
-        print: { scale: 4, quality: 0.98, format: 'PNG' }
+        high: { scale: 2.5, quality: 0.92, format: 'JPEG' },
+        print: { scale: 3, quality: 0.98, format: 'PNG' }
       };
-      const presetConfig = configMap[qualityPreset] || configMap.standard;
+      const presetConfig = presetConfigMap[qualityPreset] || presetConfigMap.standard;
+      const paperBgColor = effectiveTheme === 'dark' ? '#1E1E1E' : '#FFFFFF';
 
       if (exportFormat === 'png') {
-        // FULL TALL INFINITE PNG EXPORT
-        setProgressStage('Rendering Full Notebook PNG...');
+        setProgressStage('Rendering Notebook PNG...');
         const canvas = await html2canvas(clone, {
           scale: presetConfig.scale,
           useCORS: true,
-          backgroundColor: bgColor,
+          backgroundColor: paperBgColor,
           logging: false
         });
 
-        document.body.removeChild(clone);
+        document.body.removeChild(tempContainer);
 
         setProgressStage('Saving File...');
         const imageURI = canvas.toDataURL('image/png', presetConfig.quality);
@@ -162,21 +180,19 @@ export default function ExportModal({
           link.click();
         }
       } else {
-        // PAGINATED INCREMENTAL PDF EXPORT (Infinite notebook pagination)
-        setProgressStage('Rendering Paginated PDF...');
-        await new Promise(r => setTimeout(r, 200));
+        // PDF EXPORT
+        setProgressStage('Rendering PDF Pages...');
+        await new Promise(r => setTimeout(r, 100));
 
-        // Render full canvas off-screen
         const fullCanvas = await html2canvas(clone, {
           scale: presetConfig.scale,
           useCORS: true,
-          backgroundColor: bgColor,
+          backgroundColor: paperBgColor,
           logging: false
         });
 
-        document.body.removeChild(clone);
+        document.body.removeChild(tempContainer);
 
-        // Initialize jsPDF
         const pdf = new jsPDF({
           orientation: orientation === 'landscape' ? 'l' : 'p',
           unit: 'mm',
@@ -186,18 +202,17 @@ export default function ExportModal({
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
 
-        // Calculate page slice dimensions in canvas pixel space
         const canvasWidth = fullCanvas.width;
         const canvasHeight = fullCanvas.height;
         const sliceHeightPx = Math.floor((canvasWidth * pdfHeight) / pdfWidth);
 
         let currentY = 0;
         let pageIndex = 0;
+        const totalPdfPages = Math.max(1, Math.ceil(canvasHeight / sliceHeightPx));
 
         while (currentY < canvasHeight) {
           pageIndex++;
-          setProgressStage(`Processing Page ${pageIndex} of ${estimatedPages}...`);
-          await new Promise(r => setTimeout(r, 50));
+          setProgressStage(`Processing Page ${pageIndex} of ${totalPdfPages}...`);
 
           const pageCanvas = document.createElement('canvas');
           pageCanvas.width = canvasWidth;
@@ -205,6 +220,8 @@ export default function ExportModal({
           pageCanvas.height = currentSliceH;
 
           const ctx = pageCanvas.getContext('2d');
+          ctx.fillStyle = paperBgColor;
+          ctx.fillRect(0, 0, canvasWidth, currentSliceH);
           ctx.drawImage(
             fullCanvas,
             0, currentY, canvasWidth, currentSliceH,
@@ -242,12 +259,11 @@ export default function ExportModal({
 
       setProgressStage('Completed ✓');
       setIsCompleted(true);
-
       setTimeout(() => {
         setIsExporting(false);
         setIsCompleted(false);
         onClose();
-      }, 900);
+      }, 700);
     } catch (err) {
       console.error('Export Error:', err);
       setProgressStage('Export Failed');
@@ -265,7 +281,7 @@ export default function ExportModal({
               Export Note
             </h2>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-              Publish infinite notes with auto-pagination.
+              Export clean PDF documents and high-res notebook images.
             </p>
           </div>
 
@@ -280,7 +296,7 @@ export default function ExportModal({
         </div>
 
         {/* 1. EXPORT FORMAT CARDS (PDF vs PNG ONLY) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
           <div 
             className={`export-format-card ${exportFormat === 'pdf' ? 'selected' : ''}`}
             onClick={() => !isExporting && setExportFormat('pdf')}
@@ -288,7 +304,7 @@ export default function ExportModal({
             <FileCode size={24} color={exportFormat === 'pdf' ? '#0078D4' : 'var(--text-muted)'} />
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>📄 PDF (.pdf)</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Paginated multi-page document</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Paginated document</div>
             </div>
           </div>
 
@@ -299,13 +315,30 @@ export default function ExportModal({
             <ImageIcon size={24} color={exportFormat === 'png' ? '#0078D4' : 'var(--text-muted)'} />
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>🖼 PNG (.png)</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Full tall notebook image</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Full notebook image</div>
             </div>
           </div>
         </div>
 
-        {/* 2. QUALITY PRESETS & SETTINGS */}
+        {/* 2. EXPORT THEME & QUALITY SETTINGS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          {/* PDF / Export Theme Selector */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Document Theme
+            </label>
+            <select 
+              className="select-compact" 
+              value={exportTheme} 
+              onChange={(e) => setExportTheme(e.target.value)}
+              disabled={isExporting}
+            >
+              <option value="current">Current App Theme</option>
+              <option value="light">Light Theme (White Paper)</option>
+              <option value="dark">Dark Theme (Dark Paper)</option>
+            </select>
+          </div>
+
           {/* Quality Preset */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
@@ -317,13 +350,15 @@ export default function ExportModal({
               onChange={(e) => setQualityPreset(e.target.value)}
               disabled={isExporting}
             >
-              <option value="standard">Standard (300 DPI • ~5MB)</option>
-              <option value="high">High (600 DPI • ~12MB)</option>
-              <option value="print">Print Quality (1200 DPI • Maximum)</option>
+              <option value="standard">Standard (Compact • ~2MB)</option>
+              <option value="high">High Resolution (~4MB)</option>
+              <option value="print">Print Quality (Max DPI)</option>
             </select>
           </div>
+        </div>
 
-          {/* Paper Size */}
+        {/* Paper Size & Orientation */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16, alignItems: 'center' }}>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
               Paper Size
@@ -338,13 +373,9 @@ export default function ExportModal({
               <option value="A5">A5 (148 × 210 mm)</option>
               <option value="Letter">Letter (8.5 × 11 in)</option>
               <option value="Legal">Legal (8.5 × 14 in)</option>
-              <option value="Custom">Custom</option>
             </select>
           </div>
-        </div>
 
-        {/* Orientation & Background Toggle */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16, alignItems: 'center' }}>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
               Orientation
@@ -366,19 +397,6 @@ export default function ExportModal({
               </button>
             </div>
           </div>
-
-          <div style={{ paddingTop: 16 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>
-              <input 
-                type="checkbox"
-                checked={preserveNotebookStyle}
-                onChange={(e) => setPreserveNotebookStyle(e.target.checked)}
-                disabled={isExporting}
-                style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer' }}
-              />
-              <span>Preserve Notebook Style</span>
-            </label>
-          </div>
         </div>
 
         {/* 3. EXPORT METRICS PREVIEW BOX */}
@@ -386,7 +404,7 @@ export default function ExportModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={16} color="var(--accent)" />
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-              {exportFormat === 'pdf' ? `Estimated: ${estimatedPages} PDF ${estimatedPages === 1 ? 'Page' : 'Pages'}` : 'Full Infinite PNG Image'}
+              {exportFormat === 'pdf' ? `Estimated: ${estimatedPages} PDF ${estimatedPages === 1 ? 'Page' : 'Pages'}` : 'Full Notebook Image'}
             </span>
           </div>
 
