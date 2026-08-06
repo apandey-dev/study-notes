@@ -263,24 +263,47 @@ function createWindow() {
     }
   });
 
-  // Create File Dialog
+  // Create File Dialog / Save Dialog (Handles PDF, PNG, MD, TXT with native OS type filters)
   ipcMain.handle('create-file-dialog', async (event, { defaultName = 'Study_Note', extension = 'md' } = {}) => {
-    const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
-      title: 'Create Study Note',
-      defaultPath: path.join(app.getPath('documents'), `${defaultName}.${extension}`),
-      filters: [
-        { name: 'Markdown Document (*.md)', extensions: ['md'] },
+    const extLower = (extension || 'md').toLowerCase().replace('.', '');
+
+    let filterList = [];
+    if (extLower === 'pdf') {
+      filterList = [{ name: 'PDF Document (*.pdf)', extensions: ['pdf'] }];
+    } else if (extLower === 'png') {
+      filterList = [{ name: 'PNG Image (*.png)', extensions: ['png'] }];
+    } else if (extLower === 'txt') {
+      filterList = [
         { name: 'Text File (*.txt)', extensions: ['txt'] },
-        { name: 'All Files (*.*)', extensions: ['*'] }
-      ],
+        { name: 'Markdown Document (*.md)', extensions: ['md'] }
+      ];
+    } else {
+      filterList = [
+        { name: 'Markdown Document (*.md)', extensions: ['md'] },
+        { name: 'Text File (*.txt)', extensions: ['txt'] }
+      ];
+    }
+    filterList.push({ name: 'All Files (*.*)', extensions: ['*'] });
+
+    const baseName = defaultName.replace(/\.(md|txt|pdf|png)$/i, '');
+    const cleanDefaultName = `${baseName}.${extLower}`;
+
+    const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+      title: extLower === 'pdf' ? 'Export PDF' : (extLower === 'png' ? 'Export PNG Image' : 'Create Study Note'),
+      defaultPath: path.join(app.getPath('documents'), cleanDefaultName),
+      filters: filterList,
       properties: ['showOverwriteConfirmation']
     });
 
     if (canceled || !filePath) return { success: false };
 
     try {
-      const ext = path.extname(filePath).replace('.', '').toLowerCase() || extension;
-      fs.writeFileSync(filePath, '', 'utf-8');
+      const ext = path.extname(filePath).replace('.', '').toLowerCase() || extLower;
+
+      // Create blank text file ONLY if creating a note (.md or .txt). For binary exports (PDF/PNG), do not write empty text.
+      if (ext === 'md' || ext === 'txt') {
+        fs.writeFileSync(filePath, '', 'utf-8');
+      }
 
       return {
         success: true,
