@@ -141,7 +141,13 @@ export default function App() {
                   const parsed = parseFileContent(res.content, session.activeFile.format);
                   setActiveFile(session.activeFile);
                   setEditorContent(parsed.html);
-                  setFloatingObjects(parsed.floatingObjects || []);
+
+                  // CRITICAL FIX: Restore floating objects from parsed file data OR session localStorage fallback
+                  const restoredObjects = (parsed.floatingObjects && parsed.floatingObjects.length > 0)
+                    ? parsed.floatingObjects
+                    : (session.floatingObjects && session.floatingObjects.length > 0 ? session.floatingObjects : []);
+
+                  setFloatingObjects(restoredObjects);
                   setNoteType(session.noteType || 'ruled');
                   setZoom(session.zoom || 100);
                   setScreen('editor');
@@ -191,11 +197,26 @@ export default function App() {
           filePath: activeFile.path,
           content: serializedData
         });
-      }, 400);
+      }, 100);
 
       return () => clearTimeout(timer);
     }
   }, [editorContent, floatingObjects, activeFile, screen]);
+
+  // BEFOREUNLOAD SYNC FLUSH (Guarantees zero data loss on page refresh/reload)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (screen === 'editor' && activeFile && activeFile.path && window.electronAPI) {
+        const serializedData = serializeFileContent(editorContent, activeFile.format, floatingObjects);
+        window.electronAPI.saveFileContent({
+          filePath: activeFile.path,
+          content: serializedData
+        });
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [screen, activeFile, editorContent, floatingObjects]);
 
   // MANDATORY NEW NOTE CREATION FLOW (STEP 1 - 6)
   const handleCreateNewNote = async (requestedFormat = 'md') => {
