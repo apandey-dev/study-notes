@@ -10,6 +10,7 @@ import Highlight from '@tiptap/extension-highlight';
 import { Extension } from '@tiptap/core';
 import { CustomSlashCommands } from '../utils/customSlashCommandsExtension';
 import { FontFamily } from '../utils/customFontFamilyExtension';
+import { CustomRelatedBranches } from '../utils/customRelatedBranchesExtension';
 import Toolbar from './Toolbar';
 import FloatingObjectLayer from './FloatingObjectLayer';
 import { Table } from '@tiptap/extension-table';
@@ -93,6 +94,7 @@ const EDITOR_EXTENSIONS = [
   TableHeader,
   TableCell,
   CustomSlashCommands,
+  CustomRelatedBranches,
   FormatKeymaps
 ];
 
@@ -122,6 +124,13 @@ export default function EditorCanvas({
   const [drawingTool, setDrawingTool] = useState('none'); // 'none' | 'pen' | 'highlighter' | 'eraser'
   const [inkColor, setInkColor] = useState('#0078D4');
   const floatingLayerRef = useRef(null);
+
+  // Notebook Layout Engine States & Refs
+  const [notebookRows, setNotebookRows] = useState([]);
+  const [viewportScroll, setViewportScroll] = useState({ top: 0, height: 800 });
+  const [hoveredBranchId, setHoveredBranchId] = useState(null);
+  const [debugLayout, setDebugLayout] = useState(false);
+  const viewportRef = useRef(null);
 
   // Autocomplete Menu State
   const [slashMenu, setSlashMenu] = useState(null);
@@ -218,6 +227,249 @@ export default function EditorCanvas({
       }, 50);
     }
   }, [fileKey, content, editor]);
+
+  // Notebook Layout Engine: Measures and maps document content blocks to rows
+  const updateNotebookRows = useCallback(() => {
+    if (!editor || !paperRef.current) return;
+
+    const paperEl = paperRef.current;
+    const paperRect = paperEl.getBoundingClientRect();
+    const scale = zoom / 100;
+    const rows = [];
+    let rowCount = 0;
+
+    // Query visible ProseMirror text element blocks
+    const elements = Array.from(paperEl.querySelectorAll('.ProseMirror p, .ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror hr, .ProseMirror pre'))
+      .filter(el => {
+        if (el.closest('table')) return false;
+        if (el.closest('.floating-object-overlay-layer') || el.closest('.table-floating-toolbar')) return false;
+        return true;
+      });
+
+    elements.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const localHeight = rect.height / scale;
+      if (localHeight === 0) return; // skip hidden
+
+      const localTop = (rect.top - paperRect.top) / scale;
+      const localBottom = (rect.bottom - paperRect.top) / scale;
+      const localLeft = (rect.left - paperRect.left) / scale;
+
+      const branchId = el.getAttribute('data-branch-id') || `row-${rowCount}`;
+      const branchParent = el.getAttribute('data-branch-parent') || null;
+      const branchLevel = parseInt(el.getAttribute('data-branch-level') || '0', 10);
+      const branchCollapsed = el.getAttribute('data-branch-collapsed') === 'true';
+
+      const tag = el.tagName.toUpperCase();
+      const baseline = localTop + (localHeight * 0.72);
+
+      rowCount++;
+      rows.push({
+        id: branchId,
+        rowNumber: rowCount,
+        top: localTop,
+        bottom: localBottom,
+        baseline: baseline,
+        ruleY: localBottom,
+        height: localHeight,
+        type: tag === 'HR' ? 'Divider' : (tag.startsWith('H') ? tag : 'Normal'),
+        content: el.textContent || '',
+        left: localLeft,
+        metadata: {
+          parent: branchParent,
+          level: branchLevel,
+          collapsed: branchCollapsed,
+          tagName: tag,
+          lineHeight: parseFloat(window.getComputedStyle(el).lineHeight) / scale
+        }
+      });
+    });
+
+    // Fill the empty bottom space with standard 36px virtual placeholder rows
+    const currentActualHeight = paperRect.height / scale;
+    const minHeight = pageSize.toLowerCase() === 'custom' ? customHeight : (PAGE_SIZES[pageSize]?.height || 1123);
+    const targetFillHeight = Math.max(currentActualHeight, minHeight);
+
+    let lastY = 36; // padding-top offset
+    if (rows.length > 0) {
+      lastY = rows[rows.length - 1].bottom;
+    }
+
+    while (lastY + 36 <= targetFillHeight + 36) {
+      rowCount++;
+      rows.push({
+        id: `virtual-row-${rowCount}`,
+        rowNumber: rowCount,
+        top: lastY,
+        bottom: lastY + 36,
+        baseline: lastY + 26,
+        ruleY: lastY + 36,
+        height: 36,
+        type: 'virtual',
+        content: '',
+        left: 36,
+        metadata: {
+          tagName: 'VIRTUAL',
+          lineHeight: 36
+        }
+      });
+      lastY += 36;
+    }
+
+    setNotebookRows(rows);
+  }, [editor, zoom, pageSize, customHeight, content]);
+
+  // Hook 1: Update rows on DOM mutations (typing/formatting) or window resize
+  useEffect(() => {
+    updateNotebookRows();
+
+    window.addEventListener('resize', updateNotebookRows);
+
+    const paperEl = paperRef.current;
+    if (!paperEl) return () => window.removeEventListener('resize', updateNotebookRows);
+
+    const observer = new MutationObserver(() => {
+      updateNotebookRows();
+    });
+
+    observer.observe(paperEl, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true
+    });
+
+    return () => {
+      window.removeEventListener('resize', updateNotebookRows);
+      observer.disconnect();
+    };
+  }, [updateNotebookRows]);
+
+  // Hook 2: Keypress handler to toggle debug overlay (Ctrl + Alt + D)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+        setDebugLayout(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Hook 3: Throttled scroll listener using requestAnimationFrame for optimal virtualization performance
+  useEffect(() => {
+    const viewportEl = viewportRef.current;
+    if (!viewportEl) return;
+
+    let scrollTimeout;
+    const handleScrollEvent = () => {
+      if (scrollTimeout) return;
+      scrollTimeout = requestAnimationFrame(() => {
+        setViewportScroll({
+          top: viewportEl.scrollTop,
+          height: viewportEl.clientHeight
+        });
+        scrollTimeout = null;
+      });
+    };
+
+    viewportEl.addEventListener('scroll', handleScrollEvent);
+    // Initialize
+    setViewportScroll({
+      top: viewportEl.scrollTop,
+      height: viewportEl.clientHeight
+    });
+
+    return () => viewportEl.removeEventListener('scroll', handleScrollEvent);
+  }, []);
+
+  // Related branches click handlers to expand/collapse outline nodes
+  const handleChevronClick = (e, branchId) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    editor.commands.command(({ tr }) => {
+      let targetPos = null;
+      tr.doc.descendants((n, p) => {
+        if (n.isBlock && n.attrs.branchId === branchId) {
+          targetPos = p;
+        }
+      });
+
+      if (targetPos !== null) {
+        const targetNode = tr.doc.nodeAt(targetPos);
+        const nextCollapsed = !targetNode.attrs.branchCollapsed;
+        
+        // Toggle the parent collapsed state
+        tr.setNodeMarkup(targetPos, undefined, {
+          ...targetNode.attrs,
+          branchCollapsed: nextCollapsed
+        });
+
+        const collapsedState = {};
+        
+        // Populate current collapsed states
+        tr.doc.descendants((n) => {
+          if (n.isBlock && n.attrs.branchId) {
+            collapsedState[n.attrs.branchId] = n.attrs.branchCollapsed;
+          }
+        });
+        
+        // Override the target node collapsed state
+        collapsedState[branchId] = nextCollapsed;
+
+        // Helper to check if any ancestor is collapsed
+        const isAncestorCollapsed = (parentId) => {
+          let currentParentId = parentId;
+          while (currentParentId) {
+            if (collapsedState[currentParentId]) {
+              return true;
+            }
+            let foundParent = false;
+            tr.doc.descendants((n) => {
+              if (n.isBlock && n.attrs.branchId === currentParentId) {
+                currentParentId = n.attrs.branchParent;
+                foundParent = true;
+                return false;
+              }
+            });
+            if (!foundParent) break;
+          }
+          return false;
+        };
+
+        // Second pass: update branchHidden state on every node
+        tr.doc.descendants((n, p) => {
+          if (n.isBlock && n.attrs.branchId) {
+            const isHidden = isAncestorCollapsed(n.attrs.branchParent);
+            if (n.attrs.branchHidden !== isHidden) {
+              tr.setNodeMarkup(p, undefined, {
+                ...n.attrs,
+                branchHidden: isHidden
+              });
+            }
+          }
+        });
+
+        return true;
+      }
+      return false;
+    });
+  };
+
+  const handlePaperMouseOver = (e) => {
+    const branchLine = e.target.closest('[data-branch-id]');
+    if (branchLine) {
+      setHoveredBranchId(branchLine.getAttribute('data-branch-id'));
+    }
+  };
+
+  const handlePaperMouseOut = (e) => {
+    const branchLine = e.target.closest('[data-branch-id]');
+    if (branchLine) {
+      setHoveredBranchId(null);
+    }
+  };
 
   // Track Mouse Position & Keyboard Nav for Autocomplete & Placement Mode
   useEffect(() => {
@@ -435,6 +687,7 @@ export default function EditorCanvas({
 
   return (
     <div 
+      ref={viewportRef}
       className={`editor-main-viewport ${pendingPlacement ? 'placement-mode-active' : ''}`}
       style={{ direction: 'ltr', textAlign: 'left' }}
       onClick={(e) => {
@@ -470,6 +723,8 @@ export default function EditorCanvas({
           ref={paperRef}
           className={`study-paper ${noteType === 'ruled' ? 'ruled-page' : 'blank-page'}`}
           onContextMenu={handlePaperContextMenu}
+          onMouseOver={handlePaperMouseOver}
+          onMouseOut={handlePaperMouseOut}
           style={{
             whiteSpace: 'pre-wrap',
             overflowWrap: 'break-word',
@@ -477,7 +732,8 @@ export default function EditorCanvas({
             transform: `scale(${zoom / 100})`,
             transformOrigin: 'top center',
             direction: 'ltr',
-            textAlign: 'left'
+            textAlign: 'left',
+            position: 'relative'
           }}
         >
           {/* CONTEXTUAL TABLE ACTION TOOLBAR (Visible when cursor is inside a table) */}
@@ -605,23 +861,178 @@ export default function EditorCanvas({
             </div>
           )}
 
-          {/* Normal Document Text Flow */}
-          <EditorContent editor={editor} dir="ltr" style={{ direction: 'ltr', textAlign: 'left', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }} />
+          {/* Layer 1 (Bottom): SVG Notebook Layout Engine Canvas */}
+          <svg 
+            className="notebook-layout-svg"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 10
+            }}
+          >
+            {/* Top margin rule at y=36 */}
+            {noteType === 'ruled' && (
+              <line x1={0} y1={36} x2="100%" y2={36} />
+            )}
 
-          {/* Independent Floating Object Overlay Layer */}
-          <FloatingObjectLayer 
-            objects={floatingObjects}
-            onUpdateObjects={onUpdateFloatingObjects}
-            paperRef={paperRef}
-            fileFormat={fileFormat}
-            isConnectionModeActive={isConnectionModeActive}
-            onToggleConnectionMode={() => setIsConnectionModeActive(!isConnectionModeActive)}
-            drawingTool={drawingTool}
-            setDrawingTool={setDrawingTool}
-            inkColor={inkColor}
-            setInkColor={setInkColor}
-            refApi={floatingLayerRef}
-          />
+            {/* Ruled Lines & Debug Overlays */}
+            {(() => {
+              const scale = zoom / 100;
+              const localViewportTop = viewportScroll.top / scale - 300;
+              const localViewportBottom = (viewportScroll.top + viewportScroll.height) / scale + 300;
+
+              const visibleRows = notebookRows.filter(row => {
+                if (row.height === 0) return false;
+                return row.bottom >= localViewportTop && row.top <= localViewportBottom;
+              });
+
+              return visibleRows.map(row => {
+                const isHighlight = hoveredBranchId === row.id || (row.metadata && row.metadata.parent === hoveredBranchId);
+                return (
+                  <g key={row.id}>
+                    {noteType === 'ruled' && row.type !== 'Divider' && (
+                      <line x1={0} y1={row.ruleY} x2="100%" y2={row.ruleY} />
+                    )}
+
+                    {debugLayout && (
+                      <>
+                        <rect 
+                          x={row.left || 36} 
+                          y={row.top} 
+                          width={(paperRef.current?.offsetWidth || 800) - (row.left || 36) - 36} 
+                          height={row.height} 
+                          className="debug-row-bounds" 
+                        />
+                        <line 
+                          x1={0} 
+                          y1={row.baseline} 
+                          x2="100%" 
+                          y2={row.baseline} 
+                          className="debug-row-baseline" 
+                        />
+                        <text 
+                          x={6} 
+                          y={row.top + 14} 
+                          style={{ fontSize: 9, fill: '#EF4444', fontFamily: 'monospace', pointerEvents: 'none' }}
+                        >
+                          #{row.rowNumber} {row.type} ({Math.round(row.height)}h)
+                        </text>
+                      </>
+                    )}
+                  </g>
+                );
+              });
+            })()}
+
+            {/* Curved Connector Paths */}
+            {(() => {
+              const scale = zoom / 100;
+              const localViewportTop = viewportScroll.top / scale - 300;
+              const localViewportBottom = (viewportScroll.top + viewportScroll.height) / scale + 300;
+
+              const visibleRows = notebookRows.filter(row => {
+                if (row.height === 0) return false;
+                return row.bottom >= localViewportTop && row.top <= localViewportBottom;
+              });
+
+              return visibleRows.map(row => {
+                if (!row.metadata || !row.metadata.parent) return null;
+
+                const parentRow = notebookRows.find(r => r.id === row.metadata.parent);
+                if (!parentRow) return null;
+
+                const x_parent = parentRow.left + 12;
+                const x_child = row.left + 12;
+                const y_parent = parentRow.bottom;
+                const y_child = row.top + (row.height * 0.5);
+
+                const r = Math.min(6, y_child - y_parent);
+                let pathD = '';
+
+                if (y_child > y_parent + r) {
+                  pathD = `M ${x_parent} ${y_parent} L ${x_parent} ${y_child - r} Q ${x_parent} ${y_child}, ${x_parent + r} ${y_child} L ${x_child} ${y_child}`;
+                } else {
+                  pathD = `M ${x_parent} ${y_parent} Q ${x_parent} ${y_child}, ${x_child} ${y_child}`;
+                }
+
+                const isHighlight = hoveredBranchId === row.id || hoveredBranchId === parentRow.id;
+
+                return (
+                  <path 
+                    key={`conn-${row.id}`}
+                    d={pathD}
+                    className={`connector-line ${isHighlight ? 'connector-highlight' : ''}`}
+                  />
+                );
+              });
+            })()}
+
+            {/* Collapse / Expand Chevrons */}
+            {(() => {
+              const scale = zoom / 100;
+              const localViewportTop = viewportScroll.top / scale - 300;
+              const localViewportBottom = (viewportScroll.top + viewportScroll.height) / scale + 300;
+
+              const visibleRows = notebookRows.filter(row => {
+                if (row.height === 0) return false;
+                return row.bottom >= localViewportTop && row.top <= localViewportBottom;
+              });
+
+              const parentIds = new Set(notebookRows.filter(r => r.metadata && r.metadata.parent).map(r => r.metadata.parent));
+              
+              return visibleRows.map(row => {
+                if (!parentIds.has(row.id)) return null;
+
+                const cx = row.left + 12;
+                const cy = row.top + (row.height * 0.5);
+                const isHighlight = hoveredBranchId === row.id;
+
+                return (
+                  <g 
+                    key={`chevron-${row.id}`}
+                    className={`svg-chevron-group ${row.metadata.collapsed ? 'collapsed' : ''} ${isHighlight ? 'chevron-highlight' : ''}`}
+                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                    onClick={(e) => handleChevronClick(e, row.id)}
+                  >
+                    <path 
+                      d={`M ${cx - 4} ${cy - 2} L ${cx} ${cy + 2} L ${cx + 4} ${cy - 2}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="1.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                  </g>
+                );
+              });
+            })()}
+          </svg>
+
+          {/* Layer 2 (Middle): Rich Text Document Container */}
+          <div style={{ position: 'relative', zIndex: 20 }}>
+            <EditorContent editor={editor} dir="ltr" style={{ direction: 'ltr', textAlign: 'left', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }} />
+          </div>
+
+          {/* Layer 3 (Top): Floating Objects Layer */}
+          <div style={{ position: 'relative', zIndex: 30 }}>
+            <FloatingObjectLayer 
+              objects={floatingObjects}
+              onUpdateObjects={onUpdateFloatingObjects}
+              paperRef={paperRef}
+              fileFormat={fileFormat}
+              isConnectionModeActive={isConnectionModeActive}
+              onToggleConnectionMode={() => setIsConnectionModeActive(!isConnectionModeActive)}
+              drawingTool={drawingTool}
+              setDrawingTool={setDrawingTool}
+              inkColor={inkColor}
+              setInkColor={setInkColor}
+              refApi={floatingLayerRef}
+            />
+          </div>
         </div>
       </div>
 

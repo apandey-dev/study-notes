@@ -632,9 +632,7 @@ html, body, #root {
 
 .study-paper.ruled-page {
   padding: 36px 36px 36px 36px !important;
-  background-image: linear-gradient(var(--ruled-line) 1px, transparent 1px);
-  background-size: 100% 36px;
-  background-position: 0 36px;
+  background-color: var(--bg-editor) !important;
 }
 
 .study-paper.blank-page {
@@ -1909,6 +1907,102 @@ html, body, #root {
   z-index: 10000;
   pointer-events: none;
   animation: fadeIn 150ms ease;
+}
+
+/* Notebook Layout Engine Styles */
+.notebook-layout-svg line {
+  stroke: var(--ruled-line);
+  stroke-width: 1px;
+  shape-rendering: crispEdges;
+}
+
+/* Notebook Gutter padding on every row block node */
+.ProseMirror .branch-line {
+  position: relative !important;
+  padding-left: 24px !important; /* Gutter space: 24px */
+  box-sizing: border-box !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Collapse styling */
+.ProseMirror .branch-hidden {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Indentation levels */
+.ProseMirror .branch-level-1 { margin-left: 24px !important; }
+.ProseMirror .branch-level-2 { margin-left: 48px !important; }
+.ProseMirror .branch-level-3 { margin-left: 72px !important; }
+.ProseMirror .branch-level-4 { margin-left: 96px !important; }
+.ProseMirror .branch-level-5 { margin-left: 120px !important; }
+.ProseMirror .branch-level-6 { margin-left: 144px !important; }
+.ProseMirror .branch-level-7 { margin-left: 168px !important; }
+.ProseMirror .branch-level-8 { margin-left: 192px !important; }
+.ProseMirror .branch-level-9 { margin-left: 216px !important; }
+.ProseMirror .branch-level-10 { margin-left: 240px !important; }
+.ProseMirror .branch-level-11 { margin-left: 264px !important; }
+.ProseMirror .branch-level-12 { margin-left: 288px !important; }
+.ProseMirror .branch-level-13 { margin-left: 312px !important; }
+.ProseMirror .branch-level-14 { margin-left: 336px !important; }
+.ProseMirror .branch-level-15 { margin-left: 360px !important; }
+.ProseMirror .branch-level-16 { margin-left: 384px !important; }
+.ProseMirror .branch-level-17 { margin-left: 408px !important; }
+.ProseMirror .branch-level-18 { margin-left: 432px !important; }
+.ProseMirror .branch-level-19 { margin-left: 456px !important; }
+.ProseMirror .branch-level-20 { margin-left: 480px !important; }
+
+/* SVG connector lines style */
+.notebook-layout-svg path.connector-line {
+  fill: none;
+  stroke: var(--ruled-line);
+  stroke-width: 1px;
+  stroke-linecap: round;
+  transition: stroke 150ms ease, stroke-width 150ms ease;
+}
+
+.notebook-layout-svg path.connector-line.connector-highlight {
+  stroke: var(--accent) !important;
+  stroke-width: 1.5px !important;
+}
+
+/* SVG chevrons style */
+.notebook-layout-svg .svg-chevron-group {
+  fill: var(--text-secondary);
+  opacity: 0.45;
+  transition: opacity 150ms ease, fill 150ms ease, transform 150ms ease;
+  transform-origin: center;
+}
+
+.notebook-layout-svg .svg-chevron-group:hover,
+.notebook-layout-svg .svg-chevron-group.chevron-highlight {
+  fill: var(--accent) !important;
+  opacity: 0.95 !important;
+}
+
+.notebook-layout-svg .svg-chevron-group.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* Debug Mode Helper Visuals */
+.notebook-layout-svg rect.debug-row-bounds {
+  fill: rgba(220, 38, 38, 0.03);
+  stroke: rgba(220, 38, 38, 0.15);
+  stroke-width: 0.5px;
+}
+
+.notebook-layout-svg line.debug-row-baseline {
+  stroke: rgba(16, 185, 129, 0.4);
+  stroke-width: 0.8px;
+  stroke-dasharray: 2 2;
 }
 
 
