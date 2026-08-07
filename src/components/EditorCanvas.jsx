@@ -13,6 +13,7 @@ import { FontFamily } from '../utils/customFontFamilyExtension';
 import { CustomRelatedBranches } from '../utils/customRelatedBranchesExtension';
 import Toolbar from './Toolbar';
 import FloatingObjectLayer from './FloatingObjectLayer';
+import FloatingRadialColorPalette from './FloatingRadialColorPalette';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
@@ -175,6 +176,8 @@ export default function EditorCanvas({
   const [tableContextMenu, setTableContextMenu] = useState(null); // { x, y }
   const [drawingTool, setDrawingTool] = useState('none'); // 'none' | 'pen' | 'highlighter' | 'eraser'
   const [inkColor, setInkColor] = useState('#0078D4');
+  const [radialPaletteOpen, setRadialPaletteOpen] = useState(false);
+  const [radialPalettePos, setRadialPalettePos] = useState({ x: 0, y: 0 });
   const floatingLayerRef = useRef(null);
 
   // Notebook Layout Engine States & Refs
@@ -1180,7 +1183,18 @@ export default function EditorCanvas({
           </svg>
 
           {/* Layer 2 (Middle): Rich Text Document Container */}
-          <div style={{ position: 'relative', zIndex: 20 }}>
+          <div 
+            style={{ position: 'relative', zIndex: 20 }}
+            onContextMenu={(e) => {
+              if (!editor || editor.isDestroyed) return;
+              const { selection } = editor.state;
+              if (selection && !selection.empty) {
+                e.preventDefault();
+                setRadialPalettePos({ x: e.clientX, y: e.clientY });
+                setRadialPaletteOpen(true);
+              }
+            }}
+          >
             <EditorContent editor={editor} dir="ltr" style={{ direction: 'ltr', textAlign: 'left', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }} />
           </div>
 
@@ -1358,6 +1372,14 @@ export default function EditorCanvas({
         isOpen={isTableModalOpen}
         onClose={() => setIsTableModalOpen(false)}
         onInsert={handleInsertTable}
+      />
+
+      {/* Floating Radial Color Palette */}
+      <FloatingRadialColorPalette 
+        editor={editor}
+        isOpen={radialPaletteOpen}
+        onClose={() => setRadialPaletteOpen(false)}
+        anchorPos={radialPalettePos}
       />
 
       {/* Floating Vertical Toolbar */}
