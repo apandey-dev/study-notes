@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Palette, X } from 'lucide-react';
 
 const PALETTE_COLORS = [
-  { name: 'Primary', value: 'var(--color-text-primary)', color: 'var(--text-primary)', tooltip: 'Primary Text' },
-  { name: 'Secondary', value: 'var(--color-text-secondary)', color: 'var(--text-secondary)', tooltip: 'Secondary Text' },
-  { name: 'Blue', value: 'var(--color-accent-blue)', color: '#0078D4', tooltip: 'Accent Blue' },
-  { name: 'Green', value: 'var(--color-accent-green)', color: '#10B981', tooltip: 'Accent Green' },
-  { name: 'Orange', value: 'var(--color-accent-orange)', color: '#F59E0B', tooltip: 'Accent Orange' },
-  { name: 'Purple', value: 'var(--color-accent-purple)', color: '#8B5CF6', tooltip: 'Accent Purple' },
-  { name: 'Pink', value: '#EC4899', color: '#EC4899', tooltip: 'Pink' },
+  { name: 'Primary Text', value: 'var(--color-text-primary)', color: 'var(--color-text-primary)', tooltip: 'Primary Text' },
+  { name: 'Secondary Text', value: 'var(--color-text-secondary)', color: 'var(--color-text-secondary)', tooltip: 'Secondary Text' },
+  { name: 'Blue', value: 'var(--color-accent-blue)', color: 'var(--color-accent-blue)', tooltip: 'Accent Blue' },
+  { name: 'Green', value: 'var(--color-accent-green)', color: 'var(--color-accent-green)', tooltip: 'Accent Green' },
+  { name: 'Orange', value: 'var(--color-accent-orange)', color: 'var(--color-accent-orange)', tooltip: 'Accent Orange' },
+  { name: 'Purple', value: 'var(--color-accent-purple)', color: 'var(--color-accent-purple)', tooltip: 'Accent Purple' },
   { name: 'Red', value: '#DC2626', color: '#DC2626', tooltip: 'Pure Red' },
   { name: 'Yellow', value: '#FBCF33', color: '#FBCF33', tooltip: 'Yellow' },
-  { name: 'Gray', value: '#6B7280', color: '#6B7280', tooltip: 'Gray' },
-  { name: 'Reset', value: 'inherit', color: 'transparent', tooltip: 'Reset to Default', isReset: true },
-  { name: 'Custom', value: 'custom', color: 'linear-gradient(45deg, red, orange, yellow, green, blue, purple)', tooltip: 'Custom Color', isCustom: true }
+  { name: 'Brown', value: '#78350F', color: '#78350F', tooltip: 'Brown' },
+  { name: 'Cyan', value: 'var(--color-accent-cyan)', color: 'var(--color-accent-cyan)', tooltip: 'Cyan' }
 ];
 
 export default function FloatingRadialColorPalette({
@@ -26,7 +23,6 @@ export default function FloatingRadialColorPalette({
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [activeIndex, setActiveIndex] = useState(null);
   const containerRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   // Keyboard navigation & Close on click outside
   useEffect(() => {
@@ -72,12 +68,12 @@ export default function FloatingRadialColorPalette({
 
   if (!isOpen || !anchorPos || !editor) return null;
 
-  const R = 60; // Radial distance from center
+  const R = 54; // Radial distance from center
 
   // Restrict to viewport boundaries
   let adjustedX = anchorPos.x;
   let adjustedY = anchorPos.y;
-  const padding = 85; // buffer for R + button size
+  const padding = 75; // buffer for R + button size
 
   if (adjustedX - padding < 0) {
     adjustedX = padding;
@@ -92,24 +88,18 @@ export default function FloatingRadialColorPalette({
   }
 
   const applyColor = (colorObj) => {
-    if (colorObj.isReset) {
-      editor.chain().focus().unsetColor().run();
-      onClose();
-    } else if (colorObj.isCustom) {
-      // Trigger color input click
-      fileInputRef.current?.click();
-    } else {
-      editor.chain().focus().setColor(colorObj.value).run();
-      onClose();
-    }
+    editor.chain().focus().setColor(colorObj.value).run();
+    onClose();
   };
 
-  const handleCustomColorChange = (e) => {
-    const customCol = e.target.value;
-    if (customCol) {
-      editor.chain().focus().setColor(customCol).run();
+  const getCenterColor = () => {
+    if (hoveredIndex !== null) {
+      return PALETTE_COLORS[hoveredIndex].color;
     }
-    onClose();
+    if (activeIndex !== null) {
+      return PALETTE_COLORS[activeIndex].color;
+    }
+    return editor.getAttributes('textStyle').color || 'var(--color-text-primary)';
   };
 
   return (
@@ -125,14 +115,6 @@ export default function FloatingRadialColorPalette({
         pointerEvents: 'auto'
       }}
     >
-      {/* Hidden native color input for Custom option */}
-      <input 
-        type="color" 
-        ref={fileInputRef} 
-        style={{ display: 'none' }}
-        onChange={handleCustomColorChange}
-      />
-
       {/* Main radial popup container */}
       <div
         style={{
@@ -141,7 +123,8 @@ export default function FloatingRadialColorPalette({
           top: 0,
           width: 44,
           height: 44,
-          transform: 'translate(-50%, -50%)',
+          transform: `translate(-50%, -50%) scale(${animate ? 1 : 0.85})`,
+          opacity: animate ? 1 : 0,
           background: 'var(--bg-card)',
           border: '1px solid var(--border-subtle)',
           borderRadius: '50%',
@@ -150,49 +133,25 @@ export default function FloatingRadialColorPalette({
           alignItems: 'center',
           justifyContent: 'center',
           pointerEvents: 'auto',
-          userSelect: 'none'
+          userSelect: 'none',
+          transition: 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease'
         }}
       >
-        {/* Central Core Indicator */}
+        {/* Non-clickable Center Live Color Preview */}
         <div
           style={{
-            width: 32,
-            height: 32,
+            width: 26,
+            height: 26,
             borderRadius: '50%',
-            background: 'var(--bg-editor)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.06)',
-            cursor: 'pointer',
-            transition: 'all 120ms ease'
+            background: getCenterColor(),
+            border: '1px solid var(--border-subtle)',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)',
+            pointerEvents: 'none',
+            transition: 'background-color 150ms ease, background 150ms ease'
           }}
-          onClick={onClose}
-          title="Close Palette"
-        >
-          {hoveredIndex !== null || activeIndex !== null ? (
-            <span 
-              style={{ 
-                fontSize: 8, 
-                fontWeight: 800, 
-                textAlign: 'center', 
-                color: 'var(--accent)',
-                lineHeight: 1.1,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: 28,
-                textTransform: 'uppercase'
-              }}
-            >
-              {PALETTE_COLORS[hoveredIndex !== null ? hoveredIndex : activeIndex].name}
-            </span>
-          ) : (
-            <Palette size={14} color="var(--text-secondary)" />
-          )}
-        </div>
+        />
 
-        {/* Color Swatches */}
+        {/* Circular Color Swatches */}
         {PALETTE_COLORS.map((item, i) => {
           const angle = (i * 360) / PALETTE_COLORS.length;
           const angleRad = (angle * Math.PI) / 180;
@@ -207,19 +166,18 @@ export default function FloatingRadialColorPalette({
               onMouseLeave={() => setHoveredIndex(null)}
               onClick={() => applyColor(item)}
               title={item.tooltip}
+              aria-label={item.tooltip}
               style={{
                 position: 'absolute',
                 left: `calc(50% + ${targetX}px)`,
                 top: `calc(50% + ${targetY}px)`,
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 borderRadius: '50%',
                 background: item.color,
-                border: item.isReset 
-                  ? '2px dashed var(--border-subtle)' 
-                  : isCurrentActive 
-                    ? '2.5px solid var(--accent)' 
-                    : '1.5px solid var(--border-subtle)',
+                border: isCurrentActive 
+                  ? '2.5px solid var(--accent)' 
+                  : '1.5px solid var(--border-subtle)',
                 boxShadow: isCurrentActive 
                   ? '0 0 8px var(--accent)' 
                   : '0 2px 5px rgba(0,0,0,0.1)',
@@ -234,11 +192,7 @@ export default function FloatingRadialColorPalette({
                 padding: 0,
                 outline: 'none'
               }}
-            >
-              {item.isReset && (
-                <X size={10} color="var(--text-secondary)" />
-              )}
-            </button>
+            />
           );
         })}
       </div>

@@ -33,6 +33,7 @@
   --color-accent-purple: #9333EA;
   --color-heading-primary: #1F2937;
   --color-heading-blue: #2563EB;
+  --color-accent-cyan: #0D9488;
 
   /* Ruled Notebook Line Color - Light Mode */
   --ruled-line: rgba(203, 213, 225, 0.6);
@@ -68,6 +69,7 @@
   --color-accent-purple: #C084FC;
   --color-heading-primary: #F9FAFB;
   --color-heading-blue: #60A5FA;
+  --color-accent-cyan: #2DD4BF;
   --text-secondary: #BDBDBD;
   --text-muted: #808080;
 
