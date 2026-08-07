@@ -63,6 +63,8 @@ export default function App() {
   const [saveState, setSaveState] = useState('idle'); // 'idle' | 'saving' | 'saved'
   const [isFontDropdownOpen, setIsFontDropdownOpen] = useState(false);
   const [selectedFontLabel, setSelectedFontLabel] = useState('Playpen Sans');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempTitleName, setTempTitleName] = useState('');
 
   // Pinned Notes & Custom Rename States
   const [pinnedPaths, setPinnedPaths] = useState(() => {
@@ -93,27 +95,43 @@ export default function App() {
       cleanName += `.${ext}`;
     }
 
-    const res = await window.electronAPI.renameFile({ oldPath: notePath, newName: cleanName });
-    if (res.success && res.newPath) {
-      setOpenTabs(prev => prev.map(t => t.path === notePath ? { ...t, name: res.newFileName, path: res.newPath } : t));
-      if (activeFile && activeFile.path === notePath) {
-        setActiveFile({
-          name: res.newFileName,
-          path: res.newPath,
-          format: activeFile.format
+    try {
+      if (screen === 'editor' && activeFile && activeFile.path === notePath) {
+        const serializedData = serializeFileContent(editorContent, activeFile.format, floatingObjects);
+        await window.electronAPI.saveFileContent({
+          filePath: notePath,
+          content: serializedData
         });
       }
-      setRecentNotes(prev => prev.map(n => n.filePath === notePath ? { ...n, fileName: res.newFileName, filePath: res.newPath } : n));
-      
-      const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
-      if (savedSession) {
-        const session = JSON.parse(savedSession);
-        if (session.activeFile && session.activeFile.path === notePath) {
-          session.activeFile.name = res.newFileName;
-          session.activeFile.path = res.newPath;
-          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+
+      const res = await window.electronAPI.renameFile({ oldPath: notePath, newName: cleanName });
+      if (res && res.success && res.newPath) {
+        setOpenTabs(prev => prev.map(t => t.path === notePath ? { ...t, name: res.newFileName, path: res.newPath } : t));
+        if (activeFile && activeFile.path === notePath) {
+          lastLoadedFileKeyRef.current = res.newPath;
+          setActiveFile({
+            name: res.newFileName,
+            path: res.newPath,
+            format: activeFile.format
+          });
         }
+        setRecentNotes(prev => prev.map(n => n.filePath === notePath ? { ...n, fileName: res.newFileName, filePath: res.newPath } : n));
+        
+        const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (savedSession) {
+          const session = JSON.parse(savedSession);
+          if (session.activeFile && session.activeFile.path === notePath) {
+            session.activeFile.name = res.newFileName;
+            session.activeFile.path = res.newPath;
+            localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+          }
+        }
+      } else {
+        alert(`Rename failed: ${res?.error || 'Unknown error'}`);
       }
+    } catch (err) {
+      console.error('Rename error:', err);
+      alert(`Rename error: ${err.message}`);
     }
   };
 
@@ -544,17 +562,56 @@ export default function App() {
           )}
 
           {screen === 'editor' && activeFile ? (
-            <div 
-              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-              onClick={() => {
-                const newName = prompt("Rename active note:", activeFile.name);
-                if (newName && newName.trim()) handleRenameNote(activeFile.path, newName.trim());
-              }}
-              title="Click to rename note"
-              className="no-drag"
-            >
-              <span style={{ fontWeight: 600 }}>{activeFile.name}</span>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(Click to Rename)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} className="no-drag">
+              {isEditingTitle ? (
+                <input
+                  type="text"
+                  value={tempTitleName}
+                  onChange={(e) => setTempTitleName(e.target.value)}
+                  onBlur={() => {
+                    if (tempTitleName.trim() && tempTitleName.trim() !== activeFile.name) {
+                      handleRenameNote(activeFile.path, tempTitleName.trim());
+                    }
+                    setIsEditingTitle(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (tempTitleName.trim() && tempTitleName.trim() !== activeFile.name) {
+                        handleRenameNote(activeFile.path, tempTitleName.trim());
+                      }
+                      setIsEditingTitle(false);
+                    } else if (e.key === 'Escape') {
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  autoFocus
+                  style={{
+                    background: 'var(--bg-app)',
+                    border: '1px solid var(--accent)',
+                    borderRadius: 4,
+                    padding: '2px 8px',
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    height: 24,
+                    width: 200
+                  }}
+                />
+              ) : (
+                <div 
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                  onClick={() => {
+                    setTempTitleName(activeFile.name);
+                    setIsEditingTitle(true);
+                  }}
+                  title="Click to rename note"
+                >
+                  <span style={{ fontWeight: 600 }}>{activeFile.name}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(Click to Rename)</span>
+                </div>
+              )}
             </div>
           ) : (
             <span style={{ fontWeight: 600 }}>Study Notes</span>
