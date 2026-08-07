@@ -25,14 +25,10 @@ function measureTextWidth(text, marks, nodeType, defaultFont = 'Playpen Sans') {
 }
 
 function findLogicalParagraphStart(doc, pos) {
-  const $pos = doc.resolve(pos);
-  const depth = $pos.depth;
-  
-  let currentStart = $pos.before(depth);
-  let resolvedPos = doc.resolve(currentStart + 1);
-  
-  let index = resolvedPos.index(depth - 1);
-  const parent = resolvedPos.node(depth - 1);
+  const resolvedPos = doc.resolve(pos);
+  const depth = resolvedPos.depth;
+  const parent = resolvedPos.node(depth);
+  let index = resolvedPos.index(depth);
   
   while (index > 0) {
     const prevSibling = parent.child(index - 1);
@@ -46,7 +42,7 @@ function findLogicalParagraphStart(doc, pos) {
     }
   }
   
-  let posAccum = resolvedPos.start(depth - 1);
+  let posAccum = resolvedPos.start(depth);
   for (let i = 0; i < index; i++) {
     posAccum += parent.child(i).nodeSize;
   }
@@ -54,10 +50,10 @@ function findLogicalParagraphStart(doc, pos) {
 }
 
 function collectLogicalParagraphNodes(doc, startPos) {
-  const $pos = doc.resolve(startPos + 1);
-  const depth = $pos.depth;
-  const parent = $pos.node(depth - 1);
-  const index = $pos.index(depth - 1);
+  const resolvedPos = doc.resolve(startPos);
+  const depth = resolvedPos.depth;
+  const parent = resolvedPos.node(depth);
+  const index = resolvedPos.index(depth);
   
   const nodes = [];
   let currentPos = startPos;
@@ -228,15 +224,17 @@ function wrapLogicalParagraph(tr, doc, startPos) {
   const maxWidth = paperWidth - 104;
   
   // Resolve list indentation
-  const $pos = doc.resolve(startPos + 1);
+  const $pos = doc.resolve(startPos);
   let leftIndent = 0;
   for (let d = 1; d <= $pos.depth; d++) {
     const ancestor = $pos.node(d);
-    if (ancestor.type.name === 'bulletList' || ancestor.type.name === 'orderedList' || ancestor.type.name === 'taskList') {
-      leftIndent += 28;
-    }
-    if (ancestor.type.name === 'blockquote') {
-      leftIndent += 24;
+    if (ancestor && ancestor.type) {
+      if (ancestor.type.name === 'bulletList' || ancestor.type.name === 'orderedList' || ancestor.type.name === 'taskList') {
+        leftIndent += 28;
+      }
+      if (ancestor.type.name === 'blockquote') {
+        leftIndent += 24;
+      }
     }
   }
   const targetWidth = maxWidth - leftIndent;
