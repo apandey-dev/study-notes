@@ -10,6 +10,7 @@ export const CustomRelatedBranches = Extension.create({
         attributes: {
           branchId: {
             default: null,
+            keepOnSplit: false,
             parseHTML: element => element.getAttribute('data-branch-id') || null,
             renderHTML: attributes => {
               if (!attributes.branchId) return {};
@@ -18,6 +19,7 @@ export const CustomRelatedBranches = Extension.create({
           },
           branchParent: {
             default: null,
+            keepOnSplit: false,
             parseHTML: element => element.getAttribute('data-branch-parent') || null,
             renderHTML: attributes => {
               if (!attributes.branchParent) return {};
@@ -26,6 +28,7 @@ export const CustomRelatedBranches = Extension.create({
           },
           branchLevel: {
             default: 0,
+            keepOnSplit: false,
             parseHTML: element => parseInt(element.getAttribute('data-branch-level') || '0', 10),
             renderHTML: attributes => {
               const lvl = attributes.branchLevel || 0;
@@ -38,6 +41,7 @@ export const CustomRelatedBranches = Extension.create({
           },
           branchCollapsed: {
             default: false,
+            keepOnSplit: false,
             parseHTML: element => element.getAttribute('data-branch-collapsed') === 'true',
             renderHTML: attributes => {
               if (!attributes.branchCollapsed) return {};
@@ -46,6 +50,7 @@ export const CustomRelatedBranches = Extension.create({
           },
           branchHidden: {
             default: false,
+            keepOnSplit: false,
             parseHTML: element => element.getAttribute('data-branch-hidden') === 'true',
             renderHTML: attributes => {
               if (!attributes.branchHidden) return {};

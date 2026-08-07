@@ -240,9 +240,69 @@ export default function EditorCanvas({
     }
   }, [fileKey, content, editor]);
 
+  // Tree Validation and Auto-Correction Routine
+  const validateAndCorrectTree = useCallback(() => {
+    if (!editor || editor.isDestroyed) return false;
+
+    const { doc } = editor.state;
+    const allIds = new Set();
+    const duplicateIds = new Set();
+
+    doc.descendants((node) => {
+      if (node.type.name === 'paragraph' || node.type.name === 'heading') {
+        const id = node.attrs.branchId;
+        if (id) {
+          if (allIds.has(id)) {
+            duplicateIds.add(id);
+          } else {
+            allIds.add(id);
+          }
+        }
+      }
+      return true;
+    });
+
+    let modified = false;
+
+    editor.commands.command(({ tr }) => {
+      tr.doc.descendants((node, pos) => {
+        if (node.type.name === 'paragraph' || node.type.name === 'heading') {
+          let needsUpdate = false;
+          const newAttrs = { ...node.attrs };
+
+          if (node.attrs.branchId && duplicateIds.has(node.attrs.branchId)) {
+            newAttrs.branchId = crypto.randomUUID();
+            needsUpdate = true;
+            modified = true;
+          }
+
+          if (node.attrs.branchParent && !allIds.has(node.attrs.branchParent)) {
+            newAttrs.branchParent = null;
+            newAttrs.branchLevel = 0;
+            newAttrs.branchHidden = false;
+            needsUpdate = true;
+            modified = true;
+          }
+
+          if (needsUpdate) {
+            tr.setNodeMarkup(pos, undefined, newAttrs);
+          }
+        }
+        return true;
+      });
+      return modified;
+    });
+
+    return modified;
+  }, [editor]);
+
   // Notebook Layout Engine: Measures and maps document content blocks to rows
   const updateNotebookRows = useCallback(() => {
     if (!editor || !paperRef.current) return;
+
+    if (validateAndCorrectTree()) {
+      return;
+    }
 
     const paperEl = paperRef.current;
     const paperRect = paperEl.getBoundingClientRect();
