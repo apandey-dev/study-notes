@@ -289,9 +289,9 @@ export default function App() {
   }, [screen, activeFile, editorContent, floatingObjects]);
 
   // Global Keyboard Shortcuts Refs to prevent listener re-registrations
-  const handleSaveFileRef = useRef(handleSaveFile);
-  const handleCreateNewNoteRef = useRef(handleCreateNewNote);
-  const handleOpenNoteRef = useRef(handleOpenNote);
+  const handleSaveFileRef = useRef(null);
+  const handleCreateNewNoteRef = useRef(null);
+  const handleOpenNoteRef = useRef(null);
   const setIsSearchOpenRef = useRef(setIsSearchOpen);
   const screenRef = useRef(screen);
 
