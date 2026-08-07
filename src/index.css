@@ -919,9 +919,9 @@ html, body, #root {
   text-align: left !important;
   writing-mode: horizontal-tb !important;
   unicode-bidi: isolate;
-  white-space: pre-wrap !important;
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
+  white-space: pre !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }

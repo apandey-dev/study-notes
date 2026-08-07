@@ -6,8 +6,13 @@ import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import Paragraph from '@tiptap/extension-paragraph';
+import Heading from '@tiptap/extension-heading';
+import Blockquote from '@tiptap/extension-blockquote';
+import ListItem from '@tiptap/extension-list-item';
 import Highlight from '@tiptap/extension-highlight';
 import { Extension } from '@tiptap/core';
+import { ruledLineWrapPlugin } from '../utils/ruledLineWrapPlugin';
 import { CustomSlashCommands } from '../utils/customSlashCommandsExtension';
 import { FontFamily } from '../utils/customFontFamilyExtension';
 import { CustomRelatedBranches } from '../utils/customRelatedBranchesExtension';
@@ -76,13 +81,116 @@ const FormatKeymaps = Extension.create({
   }
 });
 
+const CustomParagraph = Paragraph.extend({
+  addAttributes() {
+    return {
+      autoWrapped: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-auto-wrapped') === 'true',
+        renderHTML: attributes => {
+          if (attributes.autoWrapped) {
+            return { 'data-auto-wrapped': 'true', class: 'auto-wrapped-row' };
+          }
+          return {};
+        }
+      }
+    };
+  }
+});
+
+const CustomHeading = Heading.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      autoWrapped: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-auto-wrapped') === 'true',
+        renderHTML: attributes => {
+          if (attributes.autoWrapped) {
+            return { 'data-auto-wrapped': 'true', class: 'auto-wrapped-row' };
+          }
+          return {};
+        }
+      }
+    };
+  }
+});
+
+const CustomBlockquote = Blockquote.extend({
+  addAttributes() {
+    return {
+      autoWrapped: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-auto-wrapped') === 'true',
+        renderHTML: attributes => {
+          if (attributes.autoWrapped) {
+            return { 'data-auto-wrapped': 'true', class: 'auto-wrapped-row' };
+          }
+          return {};
+        }
+      }
+    };
+  }
+});
+
+const CustomListItem = ListItem.extend({
+  addAttributes() {
+    return {
+      autoWrapped: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-auto-wrapped') === 'true',
+        renderHTML: attributes => {
+          if (attributes.autoWrapped) {
+            return { 'data-auto-wrapped': 'true', class: 'auto-wrapped-row' };
+          }
+          return {};
+        }
+      }
+    };
+  }
+});
+
+const CustomTaskItem = TaskItem.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      autoWrapped: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-auto-wrapped') === 'true',
+        renderHTML: attributes => {
+          if (attributes.autoWrapped) {
+            return { 'data-auto-wrapped': 'true', class: 'auto-wrapped-row' };
+          }
+          return {};
+        }
+      }
+    };
+  }
+});
+
+const RuledLineWrapExtension = Extension.create({
+  name: 'ruledLineWrapExtension',
+  addProseMirrorPlugins() {
+    return [ruledLineWrapPlugin];
+  }
+});
+
 // STATIC EXTENSIONS ARRAY - Defined outside component to prevent reference changes across re-renders
 const EDITOR_EXTENSIONS = [
-  StarterKit,
+  StarterKit.configure({
+    paragraph: false,
+    heading: false,
+    blockquote: false,
+    listItem: false
+  }),
+  CustomParagraph,
+  CustomHeading,
+  CustomBlockquote,
+  CustomListItem,
   Underline,
   Highlight.configure({ multicolor: true }),
   TaskList,
-  TaskItem.configure({ nested: true }),
+  CustomTaskItem.configure({ nested: true }),
   TextStyle,
   FontFamily,
   Color,
@@ -97,7 +205,8 @@ const EDITOR_EXTENSIONS = [
   TableCell,
   CustomSlashCommands,
   CustomRelatedBranches,
-  FormatKeymaps
+  FormatKeymaps,
+  RuledLineWrapExtension
 ];
 
 const PAGE_SIZES = {
