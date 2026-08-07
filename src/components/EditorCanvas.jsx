@@ -227,13 +227,16 @@ export default function EditorCanvas({
   // STEP 6: Set content and focus cursor to the start of the document when opening/creating note
   useEffect(() => {
     if (editor && fileKey !== lastLoadedFileKeyRef.current) {
+      const isRename = lastLoadedFileKeyRef.current && (content === editor.getHTML());
       lastLoadedFileKeyRef.current = fileKey;
-      editor.commands.setContent(content || '');
-      setTimeout(() => {
-        if (editor && !editor.isDestroyed) {
-          editor.commands.focus('start');
-        }
-      }, 50);
+      if (!isRename) {
+        editor.commands.setContent(content || '');
+        setTimeout(() => {
+          if (editor && !editor.isDestroyed) {
+            editor.commands.focus('start');
+          }
+        }, 50);
+      }
     }
   }, [fileKey, content, editor]);
 
@@ -328,17 +331,39 @@ export default function EditorCanvas({
     setNotebookRows(rows);
   }, [editor, zoom, pageSize, customHeight, content]);
 
+  const updateNotebookRowsRef = useRef(updateNotebookRows);
+  useEffect(() => {
+    updateNotebookRowsRef.current = updateNotebookRows;
+  }, [updateNotebookRows]);
+
   // Hook 1: Update rows on DOM mutations (typing/formatting) or window resize
   useEffect(() => {
-    updateNotebookRows();
+    updateNotebookRowsRef.current();
 
-    window.addEventListener('resize', updateNotebookRows);
+    const handleResize = () => {
+      updateNotebookRowsRef.current();
+    };
+    window.addEventListener('resize', handleResize);
 
     const paperEl = paperRef.current;
-    if (!paperEl) return () => window.removeEventListener('resize', updateNotebookRows);
+    if (!paperEl) return () => window.removeEventListener('resize', handleResize);
 
-    const observer = new MutationObserver(() => {
-      updateNotebookRows();
+    const observer = new MutationObserver((mutations) => {
+      const hasContentMutation = mutations.some(m => {
+        const target = m.target;
+        if (!target) return false;
+        const el = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement;
+        if (el && el.closest) {
+          if (el.closest('.notebook-layout-svg') || el.closest('.floating-object-overlay-layer')) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (hasContentMutation) {
+        updateNotebookRowsRef.current();
+      }
     });
 
     observer.observe(paperEl, {
@@ -349,10 +374,10 @@ export default function EditorCanvas({
     });
 
     return () => {
-      window.removeEventListener('resize', updateNotebookRows);
+      window.removeEventListener('resize', handleResize);
       observer.disconnect();
     };
-  }, [updateNotebookRows]);
+  }, []);
 
   // Hook 2: Keypress handler to toggle debug overlay (Ctrl + Alt + D)
   useEffect(() => {

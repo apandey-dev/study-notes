@@ -108,7 +108,6 @@ export default function App() {
       if (res && res.success && res.newPath) {
         setOpenTabs(prev => prev.map(t => t.path === notePath ? { ...t, name: res.newFileName, path: res.newPath } : t));
         if (activeFile && activeFile.path === notePath) {
-          lastLoadedFileKeyRef.current = res.newPath;
           setActiveFile({
             name: res.newFileName,
             path: res.newPath,
@@ -289,7 +288,22 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [screen, activeFile, editorContent, floatingObjects]);
 
-  // Global Keyboard Shortcuts (Ctrl+S, Ctrl+N, Ctrl+O, Ctrl+F)
+  // Global Keyboard Shortcuts Refs to prevent listener re-registrations
+  const handleSaveFileRef = useRef(handleSaveFile);
+  const handleCreateNewNoteRef = useRef(handleCreateNewNote);
+  const handleOpenNoteRef = useRef(handleOpenNote);
+  const setIsSearchOpenRef = useRef(setIsSearchOpen);
+  const screenRef = useRef(screen);
+
+  useEffect(() => {
+    handleSaveFileRef.current = handleSaveFile;
+    handleCreateNewNoteRef.current = handleCreateNewNote;
+    handleOpenNoteRef.current = handleOpenNote;
+    setIsSearchOpenRef.current = setIsSearchOpen;
+    screenRef.current = screen;
+  });
+
+  // Global Keyboard Shortcuts Hook (Ctrl+S, Ctrl+N, Ctrl+O, Ctrl+F)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       const isCtrl = e.ctrlKey || e.metaKey;
@@ -298,26 +312,26 @@ export default function App() {
       const key = e.key.toLowerCase();
       if (key === 's') {
         e.preventDefault();
-        if (screen === 'editor') {
-          handleSaveFile();
+        if (screenRef.current === 'editor') {
+          handleSaveFileRef.current();
         }
       } else if (key === 'n') {
         e.preventDefault();
-        handleCreateNewNote('md');
+        handleCreateNewNoteRef.current('md');
       } else if (key === 'o') {
         e.preventDefault();
-        handleOpenNote();
+        handleOpenNoteRef.current();
       } else if (key === 'f') {
-        if (screen === 'editor') {
+        if (screenRef.current === 'editor') {
           e.preventDefault();
-          setIsSearchOpen(prev => !prev);
+          setIsSearchOpenRef.current(prev => !prev);
         }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [screen, activeFile, editorContent, floatingObjects]);
+  }, []);
 
   // MANDATORY NEW NOTE CREATION FLOW (STEP 1 - 6)
   const handleCreateNewNote = async (requestedFormat = 'md') => {
