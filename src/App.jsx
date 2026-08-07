@@ -846,6 +846,7 @@ export default function App() {
           floatingObjects={floatingObjects}
           onUpdateFloatingObjects={setFloatingObjects}
           fileKey={activeFile?.path || activeFile?.name || 'default_note'}
+          theme={theme}
         />
       )}
 

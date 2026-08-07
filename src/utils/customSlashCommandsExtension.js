@@ -121,7 +121,7 @@ export const CustomSlashCommands = Extension.create({
         }
       }),
 
-      // Text Colors: /red, /blue, /green, /purple, /orange
+      // Text Colors: /red (absolute), /blue, /green, /purple, /orange (semantic)
       new InputRule({
         find: /^\/red(?:\s|$)/,
         handler: ({ range, chain }) => {
@@ -131,25 +131,25 @@ export const CustomSlashCommands = Extension.create({
       new InputRule({
         find: /^\/blue(?:\s|$)/,
         handler: ({ range, chain }) => {
-          chain().focus().deleteRange(range).setColor('#0078D4').run();
+          chain().focus().deleteRange(range).setColor('var(--color-accent-blue)').run();
         }
       }),
       new InputRule({
         find: /^\/green(?:\s|$)/,
         handler: ({ range, chain }) => {
-          chain().focus().deleteRange(range).setColor('#10B981').run();
+          chain().focus().deleteRange(range).setColor('var(--color-accent-green)').run();
         }
       }),
       new InputRule({
         find: /^\/purple(?:\s|$)/,
         handler: ({ range, chain }) => {
-          chain().focus().deleteRange(range).setColor('#8B5CF6').run();
+          chain().focus().deleteRange(range).setColor('var(--color-accent-purple)').run();
         }
       }),
       new InputRule({
         find: /^\/orange(?:\s|$)/,
         handler: ({ range, chain }) => {
-          chain().focus().deleteRange(range).setColor('#F59E0B').run();
+          chain().focus().deleteRange(range).setColor('var(--color-accent-orange)').run();
         }
       }),
 

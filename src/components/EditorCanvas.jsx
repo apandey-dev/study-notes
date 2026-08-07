@@ -107,6 +107,48 @@ const PAGE_SIZES = {
   Custom: { label: 'Custom Dimensions', width: 800, height: 1000 }
 };
 
+function getRGB(colorString) {
+  const temp = document.createElement('div');
+  temp.style.color = colorString;
+  document.body.appendChild(temp);
+  const resolved = window.getComputedStyle(temp).color;
+  document.body.removeChild(temp);
+  
+  const match = resolved.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (match) {
+    return { r: parseInt(match[1], 10), g: parseInt(match[2], 10), b: parseInt(match[3], 10) };
+  }
+  return null;
+}
+
+function adjustColorForTheme(colorString, theme) {
+  if (!colorString || colorString.startsWith('var(')) return colorString;
+  
+  const rgb = getRGB(colorString);
+  if (!rgb) return colorString;
+  
+  const { r, g, b } = rgb;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  
+  if (theme === 'dark' && luminance < 60) {
+    const factor = 2.5;
+    const newR = Math.min(255, Math.max(120, Math.round(r * factor + 60)));
+    const newG = Math.min(255, Math.max(120, Math.round(g * factor + 60)));
+    const newB = Math.min(255, Math.max(120, Math.round(b * factor + 60)));
+    return `rgb(${newR}, ${newG}, ${newB})`;
+  }
+  
+  if (theme === 'light' && luminance > 200) {
+    const factor = 0.45;
+    const newR = Math.round(r * factor);
+    const newG = Math.round(g * factor);
+    const newB = Math.round(b * factor);
+    return `rgb(${newR}, ${newG}, ${newB})`;
+  }
+  
+  return colorString;
+}
+
 export default function EditorCanvas({
   content,
   onContentChange,
@@ -123,7 +165,8 @@ export default function EditorCanvas({
   onOpenSearch,
   floatingObjects = [],
   onUpdateFloatingObjects,
-  fileKey = 'default_note'
+  fileKey = 'default_note',
+  theme = 'light'
 }) {
   const [pendingPlacement, setPendingPlacement] = useState(null); // { type: 'image' | 'sticky' | 'textBlock', src? }
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -476,6 +519,36 @@ export default function EditorCanvas({
 
     return () => viewportEl.removeEventListener('scroll', handleScrollEvent);
   }, []);
+
+  // Hook 4: Smart Theme-Aware Custom Colors Adjustments inside ProseMirror Model
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+
+    let hasChanges = false;
+    editor.commands.command(({ tr }) => {
+      tr.doc.descendants((node, pos) => {
+        const textStyleMark = node.marks?.find(m => m.type.name === 'textStyle');
+        if (textStyleMark && textStyleMark.attrs && textStyleMark.attrs.color) {
+          const color = textStyleMark.attrs.color;
+          if (!color.startsWith('var(')) {
+            const adjusted = adjustColorForTheme(color, theme);
+            if (adjusted !== color) {
+              const from = pos;
+              const to = pos + node.nodeSize;
+              tr.removeMark(from, to, textStyleMark.type);
+              tr.addMark(from, to, textStyleMark.type.create({
+                ...textStyleMark.attrs,
+                color: adjusted
+              }));
+              hasChanges = true;
+            }
+          }
+        }
+        return true;
+      });
+      return hasChanges;
+    });
+  }, [theme, editor]);
 
   // Related branches click handlers to expand/collapse outline nodes
   const handleChevronClick = (e, branchId) => {

@@ -94,7 +94,37 @@ export default function Toolbar({
     if (colorValue === 'inherit') {
       editor.chain().focus().unsetColor().run();
     } else {
-      editor.chain().focus().setColor(colorValue).run();
+      const getThemeAwareColor = (col, isHeading = false) => {
+        if (!col || col === 'inherit') return 'inherit';
+        const clean = col.trim().toUpperCase();
+        
+        if (clean === '#000000' || clean === '#0F172A' || clean === '#111827' || clean === '#1F2937') {
+          return isHeading ? 'var(--color-heading-primary)' : 'var(--color-text-primary)';
+        }
+        if (clean === '#FFFFFF' || clean === '#F3F4F6' || clean === '#F9FAFB') {
+          return 'var(--color-text-primary)';
+        }
+        if (clean === '#475569' || clean === '#6B7280' || clean === '#4B5563' || clean === '#9CA3AF') {
+          return 'var(--color-text-secondary)';
+        }
+        if (clean === '#2563EB' || clean === '#1D4ED8' || clean === '#0078D4') {
+          return isHeading ? 'var(--color-heading-blue)' : 'var(--color-accent-blue)';
+        }
+        if (clean === '#16A34A' || clean === '#059669' || clean === '#10B981') {
+          return 'var(--color-accent-green)';
+        }
+        if (clean === '#EA580C' || clean === '#D97706' || clean === '#F59E0B') {
+          return 'var(--color-accent-orange)';
+        }
+        if (clean === '#9333EA' || clean === '#4F46E5' || clean === '#8B5CF6') {
+          return 'var(--color-accent-purple)';
+        }
+        return col;
+      };
+
+      const isHeading = colorSubTab === 'heading';
+      const themeAwareColor = getThemeAwareColor(colorValue, isHeading);
+      editor.chain().focus().setColor(themeAwareColor).run();
     }
   };
 

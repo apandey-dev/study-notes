@@ -225,7 +225,17 @@ export default function EditorToolbar({ editor, activePage, onAddStickyNote, onC
               <div 
                 key={color} 
                 onClick={() => {
-                  editor.chain().focus().setColor(color).run();
+                  const getThemeAwareColor = (col) => {
+                    const clean = col.trim().toUpperCase();
+                    if (clean === '#0F172A') return 'var(--color-text-primary)';
+                    if (clean === '#2563EB') return 'var(--color-accent-blue)';
+                    if (clean === '#16A34A') return 'var(--color-accent-green)';
+                    if (clean === '#D97706') return 'var(--color-accent-orange)';
+                    if (clean === '#9333EA') return 'var(--color-accent-purple)';
+                    if (clean === '#475569') return 'var(--color-text-secondary)';
+                    return col;
+                  };
+                  editor.chain().focus().setColor(getThemeAwareColor(color)).run();
                   setShowColorPicker(false);
                 }}
                 style={{
