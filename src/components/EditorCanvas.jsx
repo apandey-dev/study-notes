@@ -14,6 +14,7 @@ import { CustomRelatedBranches } from '../utils/customRelatedBranchesExtension';
 import Toolbar from './Toolbar';
 import FloatingObjectLayer from './FloatingObjectLayer';
 import FloatingRadialColorPalette from './FloatingRadialColorPalette';
+import FloatingRadialHighlightPalette from './FloatingRadialHighlightPalette';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
@@ -23,7 +24,7 @@ import {
   Heading1, Heading2, Heading3, Heading4, 
   List, ListOrdered, CheckSquare, 
   Type, Image as ImageIcon, MessageSquare, 
-  Code, Calendar, Clock, Minus, AlertTriangle, FileText,
+  Code, Calendar, Clock, Minus, AlertTriangle, FileText, Highlighter,
   Table as TableIcon, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight
 } from 'lucide-react';
 
@@ -178,6 +179,9 @@ export default function EditorCanvas({
   const [inkColor, setInkColor] = useState('#0078D4');
   const [radialPaletteOpen, setRadialPaletteOpen] = useState(false);
   const [radialPalettePos, setRadialPalettePos] = useState({ x: 0, y: 0 });
+  const [radialHighlightOpen, setRadialHighlightOpen] = useState(false);
+  const [radialHighlightPos, setRadialHighlightPos] = useState({ x: 0, y: 0 });
+  const [textSelectionMenu, setTextSelectionMenu] = useState(null);
   const floatingLayerRef = useRef(null);
 
   // Notebook Layout Engine States & Refs
@@ -192,7 +196,10 @@ export default function EditorCanvas({
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    const handleGlobalClick = () => setTableContextMenu(null);
+    const handleGlobalClick = () => {
+      setTableContextMenu(null);
+      setTextSelectionMenu(null);
+    };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
@@ -495,6 +502,38 @@ export default function EditorCanvas({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Hook 2.5: Keypress handler for Highlight Palette (Alt + H or Ctrl + Shift + H)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isAltH = e.altKey && e.key.toLowerCase() === 'h';
+      const isCtrlShiftH = e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'h';
+      
+      if ((isAltH || isCtrlShiftH) && editor && !editor.isDestroyed) {
+        const { selection } = editor.state;
+        if (selection && !selection.empty) {
+          e.preventDefault();
+          if (radialHighlightOpen) {
+            setRadialHighlightOpen(false);
+          } else {
+            const sel = window.getSelection();
+            let rect = null;
+            if (sel && sel.rangeCount > 0) {
+              rect = sel.getRangeAt(0).getBoundingClientRect();
+            }
+            const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+            const y = rect ? rect.bottom + 10 : window.innerHeight / 2;
+            setRadialHighlightPos({ x, y });
+            setRadialHighlightOpen(true);
+            setRadialPaletteOpen(false);
+            setTextSelectionMenu(null);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editor, radialHighlightOpen]);
 
   // Hook 3: Throttled scroll listener using requestAnimationFrame for optimal virtualization performance
   useEffect(() => {
@@ -1190,8 +1229,9 @@ export default function EditorCanvas({
               const { selection } = editor.state;
               if (selection && !selection.empty) {
                 e.preventDefault();
-                setRadialPalettePos({ x: e.clientX, y: e.clientY });
-                setRadialPaletteOpen(true);
+                setTextSelectionMenu({ x: e.clientX, y: e.clientY });
+                setRadialPaletteOpen(false);
+                setRadialHighlightOpen(false);
               }
             }}
           >
@@ -1381,6 +1421,65 @@ export default function EditorCanvas({
         onClose={() => setRadialPaletteOpen(false)}
         anchorPos={radialPalettePos}
       />
+
+      {/* Floating Radial Highlight Palette */}
+      <FloatingRadialHighlightPalette 
+        editor={editor}
+        isOpen={radialHighlightOpen}
+        onClose={() => setRadialHighlightOpen(false)}
+        anchorPos={radialHighlightPos}
+      />
+
+      {/* TEXT SELECTION CONTEXT MENU */}
+      {textSelectionMenu && (
+        <div 
+          className="text-selection-context-menu"
+          style={{
+            position: 'fixed',
+            left: textSelectionMenu.x,
+            top: textSelectionMenu.y,
+            zIndex: 999999,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            padding: 4,
+            width: 140,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => {
+              setRadialPalettePos({ x: textSelectionMenu.x, y: textSelectionMenu.y });
+              setRadialPaletteOpen(true);
+              setTextSelectionMenu(null);
+            }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)' }}
+          >
+            <Type size={13} color="var(--accent)" />
+            <span style={{ fontWeight: 550 }}>Text Color</span>
+          </button>
+          
+          <button 
+            type="button"
+            className="list-popover-item" 
+            onClick={() => {
+              setRadialHighlightPos({ x: textSelectionMenu.x, y: textSelectionMenu.y });
+              setRadialHighlightOpen(true);
+              setTextSelectionMenu(null);
+            }}
+            style={{ padding: '6px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)' }}
+          >
+            <Highlighter size={13} color="#F59E0B" />
+            <span style={{ fontWeight: 550 }}>Highlight</span>
+          </button>
+        </div>
+      )}
 
       {/* Floating Vertical Toolbar */}
       <Toolbar 

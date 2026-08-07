@@ -35,6 +35,21 @@
   --color-heading-blue: #2563EB;
   --color-accent-cyan: #0D9488;
 
+  /* Theme-Aware Highlight System Variables - Light Mode */
+  --highlight-yellow: rgba(254, 240, 138, 0.7);
+  --highlight-green: rgba(187, 247, 208, 0.7);
+  --highlight-blue: rgba(186, 230, 253, 0.7);
+  --highlight-pink: rgba(251, 207, 232, 0.7);
+  --highlight-peach: rgba(254, 215, 170, 0.7);
+  --highlight-purple: rgba(233, 213, 255, 0.7);
+
+  --highlight-yellow-text: #1F2937;
+  --highlight-green-text: #111827;
+  --highlight-blue-text: #111827;
+  --highlight-pink-text: #111827;
+  --highlight-peach-text: #111827;
+  --highlight-purple-text: #111827;
+
   /* Ruled Notebook Line Color - Light Mode */
   --ruled-line: rgba(203, 213, 225, 0.6);
 
@@ -70,6 +85,21 @@
   --color-heading-primary: #F9FAFB;
   --color-heading-blue: #60A5FA;
   --color-accent-cyan: #2DD4BF;
+
+  /* Theme-Aware Highlight System Variables - Dark Mode */
+  --highlight-yellow: rgba(245, 158, 11, 0.35);
+  --highlight-green: rgba(16, 185, 129, 0.3);
+  --highlight-blue: rgba(14, 165, 233, 0.3);
+  --highlight-pink: rgba(236, 72, 153, 0.3);
+  --highlight-peach: rgba(249, 115, 22, 0.35);
+  --highlight-purple: rgba(139, 92, 246, 0.3);
+
+  --highlight-yellow-text: #FFFFFF;
+  --highlight-green-text: #FFFFFF;
+  --highlight-blue-text: #FFFFFF;
+  --highlight-pink-text: #FFFFFF;
+  --highlight-peach-text: #FFFFFF;
+  --highlight-purple-text: #FFFFFF;
   --text-secondary: #BDBDBD;
   --text-muted: #808080;
 
@@ -2065,6 +2095,17 @@ html, body, #root {
   stroke-dasharray: 2 2;
 }
 
+/* Smart Contrast Style Rules for Highlights */
+mark[style*="var(--highlight-yellow)"] { color: var(--highlight-yellow-text) !important; }
+mark[style*="var(--highlight-green)"] { color: var(--highlight-green-text) !important; }
+mark[style*="var(--highlight-blue)"] { color: var(--highlight-blue-text) !important; }
+mark[style*="var(--highlight-pink)"] { color: var(--highlight-pink-text) !important; }
+mark[style*="var(--highlight-peach)"] { color: var(--highlight-peach-text) !important; }
+mark[style*="var(--highlight-purple)"] { color: var(--highlight-purple-text) !important; }
 
-
-
+/* Keep active highlight styling transition smooth */
+mark {
+  transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1), color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0 2px;
+  border-radius: 3px;
+}
