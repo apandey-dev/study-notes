@@ -98,6 +98,15 @@ const EDITOR_EXTENSIONS = [
   FormatKeymaps
 ];
 
+const PAGE_SIZES = {
+  A4: { label: 'A4 Paper (794 × 1123 px)', width: 794, height: 1123 },
+  A5: { label: 'A5 Paper (559 × 794 px)', width: 559, height: 794 },
+  Letter: { label: 'US Letter (816 × 1056 px)', width: 816, height: 1056 },
+  Legal: { label: 'US Legal (816 × 1344 px)', width: 816, height: 1344 },
+  Square: { label: 'Square Canvas (800 × 800 px)', width: 800, height: 800 },
+  Custom: { label: 'Custom Dimensions', width: 800, height: 1000 }
+};
+
 export default function EditorCanvas({
   content,
   onContentChange,
