@@ -1044,6 +1044,8 @@ export default function EditorCanvas({
           onMouseOver={handlePaperMouseOver}
           onMouseOut={handlePaperMouseOut}
           style={{
+            width: pageSize.toLowerCase() === 'custom' ? (customWidth || 800) : (PAGE_SIZES[pageSize]?.width || 794),
+            minHeight: pageSize.toLowerCase() === 'custom' ? (customHeight || 1000) : (PAGE_SIZES[pageSize]?.height || 1123),
             whiteSpace: 'pre-wrap',
             overflowWrap: 'break-word',
             wordBreak: 'break-word',

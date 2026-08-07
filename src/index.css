@@ -922,7 +922,9 @@ html, body, #root {
   white-space: pre !important;
   overflow-wrap: normal !important;
   word-break: normal !important;
+  width: 100% !important;
   max-width: 100% !important;
+  overflow: hidden !important;
   box-sizing: border-box !important;
 }
 
