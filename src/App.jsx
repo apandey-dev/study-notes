@@ -20,7 +20,9 @@ import {
   X,
   Check,
   ChevronDown,
-  Type
+  Type,
+  BookOpen,
+  Printer
 } from 'lucide-react';
 
 const SESSION_STORAGE_KEY = 'fluent_notes_active_session';
@@ -56,6 +58,7 @@ export default function App() {
   const [pageSize] = useState('A4');
   const [customWidth] = useState(800);
   const [customHeight] = useState(1100);
+  const [isPrintPreview, setIsPrintPreview] = useState(false);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -705,6 +708,27 @@ export default function App() {
                 <span>{noteType === 'ruled' ? 'Ruled' : 'Blank'}</span>
               </button>
 
+              {/* View Mode Toggle (Notebook / Print Preview) */}
+              <button 
+                className={`btn-compact no-drag ${isPrintPreview ? 'btn-saved-active' : ''}`}
+                style={{ 
+                  height: 28, 
+                  fontSize: 12, 
+                  padding: '0 10px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 4,
+                  backgroundColor: isPrintPreview ? 'var(--accent)' : undefined,
+                  color: isPrintPreview ? '#FFFFFF' : undefined,
+                  borderColor: isPrintPreview ? 'var(--accent)' : undefined,
+                }}
+                onClick={() => setIsPrintPreview(!isPrintPreview)}
+                title="Toggle Print/A4 Preview Mode"
+              >
+                {isPrintPreview ? <Printer size={13} /> : <BookOpen size={13} />}
+                <span>{isPrintPreview ? 'Print A4' : 'Notebook'}</span>
+              </button>
+
               {/* Zoom Controls */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--border-light)', borderRadius: 6, padding: '0 4px', height: 28 }} className="no-drag">
                 <button className="btn-titlebar-icon" style={{ width: 22, height: 22 }} onClick={() => setZoom(Math.max(50, zoom - 10))}>
@@ -847,6 +871,7 @@ export default function App() {
           onUpdateFloatingObjects={setFloatingObjects}
           fileKey={activeFile?.path || activeFile?.name || 'default_note'}
           theme={theme}
+          isPrintPreview={isPrintPreview}
         />
       )}
 

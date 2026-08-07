@@ -4,11 +4,9 @@ const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 
 function measureTextWidth(text, marks, nodeType, defaultFont = 'Playpen Sans') {
-  // Resolve Font Family
   const fontFamilyMark = marks?.find(m => m.type.name === 'fontFamily');
   const fontFamily = fontFamilyMark ? fontFamilyMark.attrs.fontFamily : defaultFont;
   
-  // Resolve Font Size & Weight based on Node Type
   let style = '';
   if (nodeType === 'heading') {
     const level = 1; // fallback
@@ -30,7 +28,6 @@ function findLogicalParagraphStart(doc, pos) {
   const $pos = doc.resolve(pos);
   const depth = $pos.depth;
   
-  // Sibling text blocks at the current depth
   let currentStart = $pos.before(depth);
   let resolvedPos = doc.resolve(currentStart + 1);
   
@@ -226,10 +223,11 @@ function wrapLogicalParagraph(tr, doc, startPos) {
   // Resolve available paper width dynamically
   const paperEl = document.querySelector('.study-paper');
   const paperWidth = paperEl ? paperEl.clientWidth : 794;
-  const contentWidth = paperWidth - 72;
-  const baseWidth = contentWidth * 0.92;
   
-  // Resolve indentation based on list/blockquote nestings
+  // Writable Width = Paper Width - Left Margin (44px) - Right Margin (44px) - Safe Buffer (16px)
+  const maxWidth = paperWidth - 104;
+  
+  // Resolve list indentation
   const $pos = doc.resolve(startPos + 1);
   let leftIndent = 0;
   for (let d = 1; d <= $pos.depth; d++) {
@@ -241,7 +239,7 @@ function wrapLogicalParagraph(tr, doc, startPos) {
       leftIndent += 24;
     }
   }
-  const maxWidth = baseWidth - leftIndent;
+  const targetWidth = maxWidth - leftIndent;
   
   // Extract all inline nodes
   const inlineNodes = [];
@@ -256,13 +254,12 @@ function wrapLogicalParagraph(tr, doc, startPos) {
   const defaultFont = 'Playpen Sans';
   
   const measureWidth = (txt, marks) => {
-    // Determine level if heading
     const isHeading = nodeType.name === 'heading';
     const typeLabel = isHeading ? 'heading' : nodeType.name;
     return measureTextWidth(txt, marks, typeLabel, defaultFont);
   };
   
-  const lines = wrapTokens(tokens, measureWidth, maxWidth);
+  const lines = wrapTokens(tokens, measureWidth, targetWidth);
   
   // Reconstruct block nodes
   const { schema } = tr.doc;
@@ -320,7 +317,8 @@ export const ruledLineWrapPlugin = new Plugin({
   key: new PluginKey('ruledLineWrap'),
   appendTransaction(transactions, oldState, newState) {
     const docChanged = transactions.some(tr => tr.docChanged);
-    if (!docChanged) return null;
+    const forceWrap = transactions.some(tr => tr.getMeta('forceRuleWrap'));
+    if (!docChanged && !forceWrap) return null;
     
     const hasRuledWrapMeta = transactions.some(tr => tr.getMeta('ruledLineWrapApplied'));
     if (hasRuledWrapMeta) return null;

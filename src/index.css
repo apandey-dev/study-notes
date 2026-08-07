@@ -713,7 +713,7 @@ html, body, #root {
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-  padding: 43px 36px 36px 36px;
+  padding: 40px 44px 40px 44px;
   transition: width var(--transition-speed), min-height var(--transition-speed), background-color var(--transition-speed);
   position: relative;
   box-sizing: border-box;
@@ -721,7 +721,7 @@ html, body, #root {
 }
 
 .study-paper.ruled-page {
-  padding: 36px 36px 36px 36px !important;
+  padding: 40px 44px 40px 44px !important;
   background-color: var(--bg-editor) !important;
 }
 

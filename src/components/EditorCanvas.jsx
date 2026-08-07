@@ -277,7 +277,8 @@ export default function EditorCanvas({
   floatingObjects = [],
   onUpdateFloatingObjects,
   fileKey = 'default_note',
-  theme = 'light'
+  theme = 'light',
+  isPrintPreview = false
 }) {
   const [pendingPlacement, setPendingPlacement] = useState(null); // { type: 'image' | 'sticky' | 'textBlock', src? }
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -385,6 +386,50 @@ export default function EditorCanvas({
       setEditorInstance(editor);
     }
   }, [editor, setEditorInstance]);
+
+  // Dynamic Workspace Width Tracking
+  const [workspaceWidth, setWorkspaceWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWorkspaceWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const getPaperDimensions = () => {
+    if (isPrintPreview) {
+      const width = pageSize.toLowerCase() === 'custom' ? (customWidth || 800) : (PAGE_SIZES[pageSize]?.width || 794);
+      const height = pageSize.toLowerCase() === 'custom' ? (customHeight || 1100) : (PAGE_SIZES[pageSize]?.height || 1123);
+      return { width, height };
+    }
+    
+    const w = workspaceWidth;
+    let targetWidth = 794;
+    if (w > 1600) {
+      targetWidth = Math.round(w * 0.90);
+    } else if (w > 1200) {
+      targetWidth = Math.round(w * 0.92);
+    } else {
+      targetWidth = Math.round(w * 0.94);
+    }
+    
+    const height = pageSize.toLowerCase() === 'custom' ? (customHeight || 1100) : (PAGE_SIZES[pageSize]?.height || 1123);
+    return { width: targetWidth, height };
+  };
+
+  const { width: paperWidth, height: paperMinHeight } = getPaperDimensions();
+
+  // Force re-wrap when paperWidth changes
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      editor.commands.command(({ tr }) => {
+        tr.setMeta('forceRuleWrap', true);
+        return true;
+      });
+    }
+  }, [paperWidth, editor]);
 
   // STEP 6: Set content and focus cursor to the start of the document when opening/creating note
   useEffect(() => {
@@ -551,7 +596,7 @@ export default function EditorCanvas({
     }
 
     setNotebookRows(rows);
-  }, [editor, zoom, pageSize, customHeight, content]);
+  }, [editor, zoom, pageSize, customHeight, content, paperWidth]);
 
   const updateNotebookRowsRef = useRef(updateNotebookRows);
   useEffect(() => {
@@ -1044,8 +1089,8 @@ export default function EditorCanvas({
           onMouseOver={handlePaperMouseOver}
           onMouseOut={handlePaperMouseOut}
           style={{
-            width: pageSize.toLowerCase() === 'custom' ? (customWidth || 800) : (PAGE_SIZES[pageSize]?.width || 794),
-            minHeight: pageSize.toLowerCase() === 'custom' ? (customHeight || 1000) : (PAGE_SIZES[pageSize]?.height || 1123),
+            width: paperWidth,
+            minHeight: paperMinHeight,
             whiteSpace: 'pre-wrap',
             overflowWrap: 'break-word',
             wordBreak: 'break-word',
