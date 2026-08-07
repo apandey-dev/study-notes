@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FileText, FileCode, X, Plus } from 'lucide-react';
 
 export default function TabBar({
@@ -6,8 +6,12 @@ export default function TabBar({
   activeTabPath,
   onSelectTab,
   onCloseTab,
-  onNewTab
+  onNewTab,
+  onRenameTab
 }) {
+  const [editingPath, setEditingPath] = useState(null);
+  const [tempName, setTempName] = useState('');
+
   if (openTabs.length === 0) return null;
 
   return (
@@ -34,6 +38,12 @@ export default function TabBar({
             key={tab.path || tab.name}
             className={`workspace-tab ${isActive ? 'active' : ''}`}
             onClick={() => onSelectTab(tab)}
+            onDoubleClick={(e) => {
+              if (isActive && onRenameTab) {
+                setEditingPath(tab.path);
+                setTempName(tab.name);
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -54,17 +64,57 @@ export default function TabBar({
             }}
           >
             {isMd ? <FileText size={13} color="#0078D4" /> : <FileCode size={13} color="#10B981" />}
-            <span 
-              style={{ 
-                whiteSpace: 'nowrap', 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis',
-                flex: 1
-              }}
-              title={tab.name}
-            >
-              {tab.name}
-            </span>
+            
+            {editingPath === tab.path ? (
+              <input
+                type="text"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onBlur={() => {
+                  if (tempName.trim() && tempName.trim() !== tab.name) {
+                    onRenameTab(tab.path, tempName.trim());
+                  }
+                  setEditingPath(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (tempName.trim() && tempName.trim() !== tab.name) {
+                      onRenameTab(tab.path, tempName.trim());
+                    }
+                    setEditingPath(null);
+                  } else if (e.key === 'Escape') {
+                    setEditingPath(null);
+                  }
+                }}
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--accent)',
+                  borderRadius: 4,
+                  padding: '2px 4px',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  fontFamily: 'inherit',
+                  width: '100%',
+                  outline: 'none',
+                  height: 18
+                }}
+              />
+            ) : (
+              <span 
+                style={{ 
+                  whiteSpace: 'nowrap', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis',
+                  flex: 1
+                }}
+                title={tab.name}
+              >
+                {tab.name}
+              </span>
+            )}
+            
             <button
               className="btn-titlebar-icon"
               onClick={(e) => {

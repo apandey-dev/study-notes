@@ -64,6 +64,59 @@ export default function App() {
   const [isFontDropdownOpen, setIsFontDropdownOpen] = useState(false);
   const [selectedFontLabel, setSelectedFontLabel] = useState('Playpen Sans');
 
+  // Pinned Notes & Custom Rename States
+  const [pinnedPaths, setPinnedPaths] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fluent_notes_pinned_paths') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const handleTogglePinNote = (note) => {
+    if (!note || !note.filePath) return;
+    setPinnedPaths(prev => {
+      const next = prev.includes(note.filePath)
+        ? prev.filter(p => p !== note.filePath)
+        : [...prev, note.filePath];
+      localStorage.setItem('fluent_notes_pinned_paths', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleRenameNote = async (notePath, newName) => {
+    if (!window.electronAPI) return;
+    let cleanName = newName.trim();
+    if (!cleanName) return;
+    const ext = notePath.split('.').pop();
+    if (!cleanName.endsWith(`.${ext}`)) {
+      cleanName += `.${ext}`;
+    }
+
+    const res = await window.electronAPI.renameFile({ oldPath: notePath, newName: cleanName });
+    if (res.success && res.newPath) {
+      setOpenTabs(prev => prev.map(t => t.path === notePath ? { ...t, name: res.newFileName, path: res.newPath } : t));
+      if (activeFile && activeFile.path === notePath) {
+        setActiveFile({
+          name: res.newFileName,
+          path: res.newPath,
+          format: activeFile.format
+        });
+      }
+      setRecentNotes(prev => prev.map(n => n.filePath === notePath ? { ...n, fileName: res.newFileName, filePath: res.newPath } : n));
+      
+      const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (savedSession) {
+        const session = JSON.parse(savedSession);
+        if (session.activeFile && session.activeFile.path === notePath) {
+          session.activeFile.name = res.newFileName;
+          session.activeFile.path = res.newPath;
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        }
+      }
+    }
+  };
+
   const FONT_OPTIONS = [
     { label: 'Playpen Sans', value: "'Playpen Sans', cursive, sans-serif" },
     { label: 'Fredoka', value: "'Fredoka', sans-serif" },
@@ -216,6 +269,36 @@ export default function App() {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [screen, activeFile, editorContent, floatingObjects]);
+
+  // Global Keyboard Shortcuts (Ctrl+S, Ctrl+N, Ctrl+O, Ctrl+F)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      if (!isCtrl) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 's') {
+        e.preventDefault();
+        if (screen === 'editor') {
+          handleSaveFile();
+        }
+      } else if (key === 'n') {
+        e.preventDefault();
+        handleCreateNewNote('md');
+      } else if (key === 'o') {
+        e.preventDefault();
+        handleOpenNote();
+      } else if (key === 'f') {
+        if (screen === 'editor') {
+          e.preventDefault();
+          setIsSearchOpen(prev => !prev);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [screen, activeFile, editorContent, floatingObjects]);
 
   // MANDATORY NEW NOTE CREATION FLOW (STEP 1 - 6)
@@ -434,6 +517,15 @@ export default function App() {
     }
   };
 
+  const sortedRecentNotes = [...recentNotes].sort((a, b) => {
+    if (!a || !b) return 0;
+    const aPinned = pinnedPaths.includes(a.filePath);
+    const bPinned = pinnedPaths.includes(b.filePath);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    return new Date(b.lastModified || 0) - new Date(a.lastModified || 0);
+  });
+
   return (
     <div className="app-container">
       {/* WINDOWS NATIVE TITLEBAR HEADER */}
@@ -451,11 +543,22 @@ export default function App() {
             <div style={{ width: 8 }} />
           )}
 
-          <span style={{ fontWeight: 600 }}>
-            {screen === 'editor' && activeFile 
-              ? `${activeFile.name} — Study Notes` 
-              : 'Study Notes'}
-          </span>
+          {screen === 'editor' && activeFile ? (
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+              onClick={() => {
+                const newName = prompt("Rename active note:", activeFile.name);
+                if (newName && newName.trim()) handleRenameNote(activeFile.path, newName.trim());
+              }}
+              title="Click to rename note"
+              className="no-drag"
+            >
+              <span style={{ fontWeight: 600 }}>{activeFile.name}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(Click to Rename)</span>
+            </div>
+          ) : (
+            <span style={{ fontWeight: 600 }}>Study Notes</span>
+          )}
         </div>
 
         {/* Header Right Actions */}
@@ -623,13 +726,14 @@ export default function App() {
           onSelectTab={(tab) => handleOpenNote({ path: tab.path, name: tab.name })}
           onCloseTab={handleCloseTab}
           onNewTab={() => handleCreateNewNote('md')}
+          onRenameTab={handleRenameNote}
         />
       )}
 
       {/* SCREEN ROUTER */}
       {screen === 'home' ? (
         <HomeScreen 
-          recentNotes={recentNotes}
+          recentNotes={sortedRecentNotes}
           theme={theme}
           onToggleTheme={handleToggleTheme}
           onCreateNote={() => handleCreateNewNote('md')}
@@ -650,6 +754,8 @@ export default function App() {
             }
           }}
           onDropFile={(file) => handleOpenNote({ name: file.name, path: file.path, content: '' })}
+          pinnedPaths={pinnedPaths}
+          onTogglePinNote={handleTogglePinNote}
         />
       ) : (
         <EditorCanvas 

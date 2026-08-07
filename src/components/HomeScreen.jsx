@@ -13,7 +13,8 @@ import {
   Edit3,
   AlertCircle,
   Sun,
-  Moon
+  Moon,
+  Pin
 } from 'lucide-react';
 
 export default function HomeScreen({ 
@@ -25,7 +26,9 @@ export default function HomeScreen({
   onSelectRecentNote, 
   onRenameRecentNote,
   onRemoveRecentNote,
-  onDropFile 
+  onDropFile,
+  pinnedPaths = [],
+  onTogglePinNote
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [contextMenu, setContextMenu] = useState(null);
@@ -261,35 +264,40 @@ export default function HomeScreen({
                       </span>
                     </div>
 
-                    {isMissing ? (
-                      <span 
-                        style={{
-                          fontSize: 10,
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: '#FEE2E2',
-                          color: '#DC2626',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 3
-                        }}
-                      >
-                        <AlertCircle size={10} />
-                        Missing File
-                      </span>
-                    ) : (
-                      <span 
-                        style={{
-                          fontSize: 10,
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: 'var(--border-light)',
-                          color: 'var(--text-secondary)'
-                        }}
-                      >
-                        {note.pageType === 'ruled' ? 'Ruled' : 'Blank'}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {pinnedPaths.includes(note.filePath) && (
+                        <Pin size={11} fill="var(--accent)" stroke="var(--accent)" style={{ transform: 'rotate(45deg)' }} />
+                      )}
+                      {isMissing ? (
+                        <span 
+                          style={{
+                            fontSize: 10,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: '#FEE2E2',
+                            color: '#DC2626',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3
+                          }}
+                        >
+                          <AlertCircle size={10} />
+                          Missing File
+                        </span>
+                      ) : (
+                        <span 
+                          style={{
+                            fontSize: 10,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: 'var(--border-light)',
+                            color: 'var(--text-secondary)'
+                          }}
+                        >
+                          {note.pageType === 'ruled' ? 'Ruled' : 'Blank'}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div 
@@ -368,6 +376,15 @@ export default function HomeScreen({
           >
             <FolderOpen size={13} color="#0078D4" />
             <span>Open</span>
+          </button>
+          
+          <button 
+            className="btn-compact" 
+            style={{ justifyContent: 'flex-start', width: '100%', height: 30 }}
+            onClick={() => { onTogglePinNote(contextMenu.note); closeContextMenu(); }}
+          >
+            <Pin size={13} fill={pinnedPaths.includes(contextMenu.note.filePath) ? "var(--accent)" : "none"} color="var(--accent)" style={{ transform: 'rotate(45deg)' }} />
+            <span>{pinnedPaths.includes(contextMenu.note.filePath) ? 'Unpin from Top' : 'Pin to Top'}</span>
           </button>
 
           <button 
