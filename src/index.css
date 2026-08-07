@@ -307,13 +307,51 @@ html, body, #root {
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
-  transition: transform var(--transition-speed), box-shadow var(--transition-speed), border-color var(--transition-speed);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-speed), box-shadow var(--transition-speed), border-color var(--transition-speed), border-width var(--transition-speed);
 }
 
 .note-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
   border-color: rgba(0, 120, 212, 0.4);
+}
+
+/* Pinned Note Card styling */
+.note-card.pinned {
+  border-width: 2px;
+  border-color: var(--accent);
+}
+
+/* Subtle colored left strip blending into rounded corners */
+.note-card.pinned::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.note-card.pinned:hover {
+  border-color: var(--accent-hover, #005a9e);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark theme overrides for pinned cards */
+[data-theme="dark"] .note-card.pinned {
+  border-color: rgba(0, 120, 212, 0.55);
+}
+
+[data-theme="dark"] .note-card.pinned::before {
+  background: rgba(0, 120, 212, 0.7);
+}
+
+[data-theme="dark"] .note-card.pinned:hover {
+  border-color: rgba(0, 120, 212, 0.85);
 }
 
 /* Compact Integrated Vertical Toolbar */

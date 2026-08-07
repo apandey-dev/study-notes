@@ -237,18 +237,19 @@ export default function HomeScreen({
             const isSelected = selectedNotePath === note.filePath;
             const isMissing = note.isMissing === true;
             const displayFileName = note.fileName || 'Untitled.md';
+            const isPinned = pinnedPaths.includes(note.filePath);
 
             return (
               <div 
                 key={note.filePath || note.fileName}
-                className="note-card"
+                className={`note-card ${isPinned ? 'pinned' : ''} ${isSelected ? 'selected' : ''}`}
                 onClick={() => setSelectedNotePath(note.filePath)}
                 onDoubleClick={() => onSelectRecentNote(note)}
                 onContextMenu={(e) => handleRightClick(e, note)}
                 style={{
                   background: isSelected ? 'var(--accent-light)' : 'var(--bg-card)',
-                  borderColor: isMissing ? '#FCA5A5' : isSelected ? 'var(--accent)' : 'var(--border-subtle)',
-                  opacity: isMissing ? 0.75 : 1
+                  opacity: isMissing ? 0.75 : 1,
+                  ...(isMissing ? { borderColor: '#FCA5A5' } : isSelected ? { borderColor: 'var(--accent)' } : {})
                 }}
               >
                 <div>
@@ -265,9 +266,6 @@ export default function HomeScreen({
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {pinnedPaths.includes(note.filePath) && (
-                        <Pin size={11} fill="var(--accent)" stroke="var(--accent)" style={{ transform: 'rotate(45deg)' }} />
-                      )}
                       {isMissing ? (
                         <span 
                           style={{
