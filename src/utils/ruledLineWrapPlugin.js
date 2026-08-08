@@ -80,9 +80,11 @@ function collectLogicalParagraphNodes(doc, startPos) {
 
 function tokenizeInlineNodes(inlineChildren) {
   const tokens = [];
+  if (!inlineChildren) return tokens;
   inlineChildren.forEach(child => {
+    if (!child) return;
     if (child.isText) {
-      const text = child.text;
+      const text = child.text || '';
       const regex = /(\s+)|([^\s]+)/g;
       let match;
       while ((match = regex.exec(text)) !== null) {
@@ -110,12 +112,13 @@ function wrapTokens(tokens, measureWidth, maxWidth) {
   
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+    if (!token) continue;
     
     let tokenWidth = 0;
     if (token.node) {
-      tokenWidth = token.node.attrs.width || 50;
+      tokenWidth = token.node.attrs?.width || 50;
     } else {
-      tokenWidth = measureWidth(token.text, token.marks);
+      tokenWidth = measureWidth(token.text || '', token.marks);
     }
     
     if (currentWidth + tokenWidth <= maxWidth) {
@@ -129,11 +132,12 @@ function wrapTokens(tokens, measureWidth, maxWidth) {
           currentWidth = 0;
         }
       } else {
+        const tokenText = token.text || '';
         if (tokenWidth > maxWidth) {
           let charAccum = '';
           let charWidthAccum = 0;
-          for (let c = 0; c < token.text.length; c++) {
-            const char = token.text[c];
+          for (let c = 0; c < tokenText.length; c++) {
+            const char = tokenText[c];
             const cw = measureWidth(char, token.marks);
             if (currentWidth + charWidthAccum + cw <= maxWidth) {
               charAccum += char;
@@ -176,7 +180,7 @@ function getCaretCharOffset(doc, startPos, caretPos) {
   let found = false;
   doc.nodesBetween(startPos, caretPos, (node, pos) => {
     if (found) return false;
-    if (node.isText) {
+    if (node && node.isText && node.text) {
       const nodeLen = node.text.length;
       if (pos + nodeLen >= caretPos) {
         offset += (caretPos - pos);
@@ -195,7 +199,8 @@ function getNewCaretPos(newNodes, startPos, charOffset) {
   
   for (let i = 0; i < newNodes.length; i++) {
     const node = newNodes[i];
-    const textLen = node.textContent.length;
+    if (!node) continue;
+    const textLen = node.textContent ? node.textContent.length : 0;
     
     if (remainingOffset <= textLen) {
       return currentPos + 1 + remainingOffset;
@@ -282,7 +287,9 @@ function wrapLogicalParagraph(tr, doc, startPos) {
   let isIdentical = newBlocks.length === nodes.length;
   if (isIdentical) {
     for (let i = 0; i < nodes.length; i++) {
-      if (nodes[i].node.textContent !== newBlocks[i].textContent) {
+      const oldNode = nodes[i]?.node;
+      const newNode = newBlocks[i];
+      if (!oldNode || !newNode || oldNode.textContent !== newNode.textContent) {
         isIdentical = false;
         break;
       }
