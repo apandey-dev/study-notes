@@ -78,7 +78,8 @@
       }
     ]
   },
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "@tiptap/extension-color": "^3.29.2",
     "@tiptap/extension-highlight": "^3.29.2",
     "@tiptap/extension-image": "^3.29.2",
@@ -94,24 +95,22 @@
     "@tiptap/pm": "^3.29.2",
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
     "@xyflow/react": "^12.11.2",
     "canvas-confetti": "^1.9.4",
+    "concurrently": "^10.0.4",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.28.0",
     "marked": "^18.0.7",
+    "oxlint": "^1.75.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "turndown": "^7.2.4"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
-    "concurrently": "^10.0.4",
-    "electron": "^43.2.0",
-    "electron-builder": "^26.0.0",
-    "oxlint": "^1.75.0",
+    "turndown": "^7.2.4",
     "vite": "^8.2.0"
   }
 }
